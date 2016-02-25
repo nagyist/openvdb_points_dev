@@ -133,6 +133,7 @@ run(int argc, char* argv[])
         runner.addTest(registry.makeTest());
 
         CppUnit::TestResult controller;
+        controller.popProtector();
 
         CppUnit::TestResultCollector result;
         controller.addListener(&result);
