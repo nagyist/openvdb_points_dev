@@ -11,6 +11,7 @@ if [ "$TASK" = "pre_install" ]; then
     sudo apt-get install -y libboost-all-dev
     sudo apt-get install -y libtbb-dev
     sudo apt-get install -y libcppunit-dev
+    sudo apt-get install -y gdb
     # sym-links reduce command word lengths
     sudo ln -s $PWD /test
     cd /test
