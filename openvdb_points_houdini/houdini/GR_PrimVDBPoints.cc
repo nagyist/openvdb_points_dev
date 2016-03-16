@@ -338,7 +338,7 @@ struct FillGPUBuffersPosition {
 template<   typename PointDataTreeType,
             typename AttributeType,
             typename HoudiniBufferType>
-struct FillGPUBuffersColor {
+struct FillGPUBuffersVec3 {
 
     typedef typename PointDataTreeType::LeafNodeType LeafNode;
     typedef typename openvdb::tree::LeafManager<PointDataTreeType> LeafManagerT;
@@ -346,7 +346,7 @@ struct FillGPUBuffersColor {
 
     typedef std::vector<std::pair<const LeafNode*, openvdb::Index64> > LeafOffsets;
 
-    FillGPUBuffersColor( HoudiniBufferType* buffer,
+    FillGPUBuffersVec3( HoudiniBufferType* buffer,
                             const LeafOffsets& leafOffsets,
                             const PointDataTreeType& pointDataTree,
                             const unsigned attributeIndex)
@@ -397,7 +397,7 @@ struct FillGPUBuffersColor {
     const LeafOffsets&                  mLeafOffsets;
     const PointDataTreeType&            mPointDataTree;
     const unsigned                      mAttributeIndex;
-}; // class FillGPUBuffersColor
+}; // class FillGPUBuffersVec3
 
 struct FillGPUBuffersLeafBoxes
 {
@@ -587,7 +587,7 @@ GR_PrimVDBPoints::updatePoints(RE_Render* r,
         }
 
         using gr_primitive_internal::FillGPUBuffersPosition;
-        using gr_primitive_internal::FillGPUBuffersColor;
+        using gr_primitive_internal::FillGPUBuffersVec3;
 
         if (hasPosition)
         {
@@ -611,7 +611,7 @@ GR_PrimVDBPoints::updatePoints(RE_Render* r,
             UT_Vector3H *cdata = static_cast<UT_Vector3H*>(colGeo->map(r));
 
             if (colorType == "vec3s") {
-                FillGPUBuffersColor<    TreeType,
+                FillGPUBuffersVec3<    TreeType,
                                         openvdb::Vec3f,
                                         UT_Vector3H> fill(cdata,
                                                           offsets,
@@ -622,7 +622,7 @@ GR_PrimVDBPoints::updatePoints(RE_Render* r,
                 tbb::parallel_for(range, fill);
             }
             else if (colorType == "vec3h") {
-                FillGPUBuffersColor<    TreeType,
+                FillGPUBuffersVec3<    TreeType,
                         openvdb::math::Vec3<half>,
                         UT_Vector3H> fill(cdata,
                                           offsets,
@@ -843,7 +843,7 @@ GR_PrimVDBPoints::render(RE_Render *r,
 
     if (myWire) {
         fpreal32 constcol[3] = { 0.6, 0.6, 0.6 };
-        myGeo->createConstAttribute(r, "Cd", RE_GPU_FLOAT32, 3, constcol);
+        myWire->createConstAttribute(r, "Cd", RE_GPU_FLOAT32, 3, constcol);
 
         r->pushLineWidth(commonOpts.wireWidth());
         myWire->draw(r, RE_GEO_WIRE_IDX);
