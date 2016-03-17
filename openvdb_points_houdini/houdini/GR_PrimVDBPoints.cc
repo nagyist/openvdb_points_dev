@@ -79,7 +79,11 @@
 #define THIS_HOOK_NAME "GUI_PrimVDBPointsHook"
 #define THIS_PRIMITIVE_NAME "GR_PrimVDBPoints"
 
+#if (UT_VERSION_INT >= 0x0e000000) // 14.0.0 or later
 static RE_ShaderHandle thePointShader("particle/GL32/point.prog");
+#else
+static RE_ShaderHandle thePointShader("basic/GL32/const_color.prog");
+#endif
 
 /// @note The render hook guard should not be required..
 
@@ -149,15 +153,7 @@ public:
                         const GR_DisplayOption *opt,
                         const RE_MaterialList  *materials);
 
-#if (UT_VERSION_INT >= 0x0e000000) // 14.0.0 or later
     virtual void renderDecoration(RE_Render*, GR_Decoration, const GR_DecorationParms&);
-
-    virtual void renderInstances(RE_Render*, GR_RenderMode, GR_RenderFlags,
-                                 const GR_DisplayOption*, const RE_MaterialList*, int) {}
-
-    virtual int renderPick(RE_Render*, const GR_DisplayOption*, unsigned int,
-                           GR_PickStyle, bool) { return 0; }
-#endif
 
 protected:
     void updatePosBuffer(  RE_Render* r,
@@ -1000,9 +996,16 @@ GR_PrimVDBPoints::renderDecoration(RE_Render* r, GR_Decoration decor, const GR_D
         decor == GR_POINT_POSITION ||
         decor == GR_POINT_VELOCITY)
     {
+#if (UT_VERSION_INT >= 0x0e000000) // 14.0.0 or later
         drawDecorationForGeo(r, myGeo, decor, p.opts, p.render_flags,
                  p.overlay, p.override_vis, p.instance_group,
                  GR_SELECT_NONE);
+#else
+        UT_Matrix4DArray array;
+        drawDecorationForGeo(r, myGeo, decor, p.opts,
+                 p.overlay, p.override_vis, array,
+                 GR_SELECT_NONE);
+#endif
     }
 
     GR_Primitive::renderDecoration(r, decor, p);
