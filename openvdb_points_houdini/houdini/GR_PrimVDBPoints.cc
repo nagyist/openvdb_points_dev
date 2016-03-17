@@ -153,7 +153,9 @@ public:
                         const GR_DisplayOption *opt,
                         const RE_MaterialList  *materials);
 
+#if (UT_VERSION_INT >= 0x0e000000) // 14.0.0 or later
     virtual void renderDecoration(RE_Render*, GR_Decoration, const GR_DecorationParms&);
+#endif
 
 protected:
     void updatePosBuffer(  RE_Render* r,
@@ -946,6 +948,7 @@ GR_PrimVDBPoints::render(RE_Render *r,
 }
 
 
+#if (UT_VERSION_INT >= 0x0e000000) // 14.0.0 or later
 void
 GR_PrimVDBPoints::renderDecoration(RE_Render* r, GR_Decoration decor, const GR_DecorationParms& p)
 {
@@ -996,20 +999,14 @@ GR_PrimVDBPoints::renderDecoration(RE_Render* r, GR_Decoration decor, const GR_D
         decor == GR_POINT_POSITION ||
         decor == GR_POINT_VELOCITY)
     {
-#if (UT_VERSION_INT >= 0x0e000000) // 14.0.0 or later
         drawDecorationForGeo(r, myGeo, decor, p.opts, p.render_flags,
                  p.overlay, p.override_vis, p.instance_group,
                  GR_SELECT_NONE);
-#else
-        UT_Matrix4DArray array;
-        drawDecorationForGeo(r, myGeo, decor, p.opts,
-                 p.overlay, p.override_vis, array,
-                 GR_SELECT_NONE);
-#endif
     }
 
     GR_Primitive::renderDecoration(r, decor, p);
 }
+#endif
 
 
 ////////////////////////////////////////
