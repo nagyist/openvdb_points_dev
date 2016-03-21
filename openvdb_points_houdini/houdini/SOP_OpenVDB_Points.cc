@@ -98,15 +98,18 @@ attrTypeFromGAAttribute(GA_Attribute const * attribute, const int compression = 
     }
 
     const GA_AIFTuple* tupleAIF = attribute->getAIFTuple();
+    const GA_AIFNumericArray* numericAIF = attribute->getAIFNumericArray();
 
-    if (!tupleAIF) {
+    if (!numericAIF && !tupleAIF) {
         std::stringstream ss; ss << "Invalid attribute type - " << attribute->getName();
         throw std::runtime_error(ss.str());
     }
 
-    const GA_Storage storage = tupleAIF->getStorage(attribute);
+    const GA_Storage storage = tupleAIF ?   tupleAIF->getStorage(attribute) :
+                                            numericAIF->getStorage(attribute);
 
-    const int16_t width = static_cast<int16_t>(tupleAIF->getTupleSize(attribute));
+    const int16_t width = static_cast<int16_t>(tupleAIF ?   tupleAIF->getTupleSize(attribute) :
+                                                            numericAIF->getTupleSize(attribute));
 
     if (width == 1)
     {
@@ -188,15 +191,18 @@ attrStringTypeFromGAAttribute(GA_Attribute const * attribute)
     }
 
     const GA_AIFTuple* tupleAIF = attribute->getAIFTuple();
+    const GA_AIFNumericArray* numericAIF = attribute->getAIFNumericArray();
 
-    if (!tupleAIF) {
+    if (!numericAIF && !tupleAIF) {
         std::stringstream ss; ss << "Invalid attribute type - " << attribute->getName();
         throw std::runtime_error(ss.str());
     }
 
-    const GA_Storage storage = tupleAIF->getStorage(attribute);
+    const GA_Storage storage = tupleAIF ?   tupleAIF->getStorage(attribute) :
+                                            numericAIF->getStorage(attribute);
 
-    const int16_t width = static_cast<int16_t>(tupleAIF->getTupleSize(attribute));
+    const int16_t width = static_cast<int16_t>(tupleAIF ?   tupleAIF->getTupleSize(attribute) :
+                                                            numericAIF->getTupleSize(attribute));
 
     if (width == 1)
     {
