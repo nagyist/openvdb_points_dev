@@ -1,6 +1,55 @@
 OpenVDB Points Version History
 ==============================
 
+Version 0.2.0 - In Development
+
+    Highlights:
+    - Todo
+
+    New features:
+    - Added a method to PointDataLeafNode to drop attributes by index.
+    - Added the ability to reorder attributes in an AttributeSet or PointDataLeafNode.
+    - Added metadata to the AttributeSet::Descriptor for storing global data.
+    - Added AttributeHandles to provide easy read and write access to attribute data without being required to know the Codec or storage type.
+    - Added an AttributeSet swap method for the PointDataLeafNode.
+    - Added ability to explicitly set voxel offsets value on PointDataLeafNode.
+    - Added a method on AttributeArray to check if array has the specified value type.
+    - Added a fill method to AttributeArray that does not force the array to be uniform (unlike collapse).
+    - Added a convenience method to the Descriptor to retrieve a unique name for an attribute array based on a suggestion.
+    - Added a convenience method to the AttributeSet to count the number of points with a specific flag.
+    - Added an optional group flag to AttributeArray.
+    - Appending an attribute to a PointDataLeaf now returns the new AttributeArray.
+    - Added the ability to specify hidden, transient or group when adding a new attribute.
+    - Added free functions to drop attributes from a PointDataTree.
+    - Added attribute groups to AttributeSet and Descriptor, a group being denoted by a single bit of an 8-bit attribute array.
+    - Added GroupHandles to provide easy read and write access to attribute groups and GroupFilters to perform attribute filtering.
+    - "Introduce new GroupAttributeArray derived class"
+
+    Improvements:
+    - Introduced continuous integration through Travis and code coverage through Codecov.
+    - Stricter compliance to more compile-time warnings using various of compilers.
+
+    Bug fixes:
+    - New typeNameAsString specialization for uint16.
+    - Introduced the TopologyCopy constructor for PointDataLeafNode to match those provided by OpenVDB Leaf nodes [Contributed by Rick Hankins].
+    - Added a missing AttributeSet::Descriptor copy-constructor.
+    - Fixed a bug in AttributeSet::Descriptor serialization to prevent the writing out of non-transient attribute metadata.
+    - Fixed a bug where an AttributeArray was copied on write despite being retrieved using a non-const getter.
+
+    API changes:
+    - TypedAttributeArray::hasTypedAttribute<T>() method has been removed, this is now exclusively available in AttributeArray.
+
+    Houdini:
+    - Multi-thread the conversion from VDB Points back to Houdini points using
+      OpenVDB Points SOP (previously only Houdini Points -> VDB Points was threaded).
+    - Migrate GR Primitive over to being a SOP-style DSO and remove libopenvdb_points_houdini.
+    - Fixed a race condition threading bug in OpenVDB Points SOP.
+
+    Clarisse:
+    - New Isotropix Clarisse ray-tracing module introduced to provide native
+      VDB point ray-tracing and geometry instancing.
+    - Added support for Clarisse scatterer.
+
 Version 0.1.0 - October 1, 2015
 
     Core API:
@@ -22,17 +71,3 @@ Version 0.1.0 - October 1, 2015
       SOPs.
     - A custom GR primitive for rendering OpenVDB Points natively in the
       Houdini viewport.
-
-Version 0.2.0 - In Development
-
-    Core API:
-    - Added a new TopologyCopy constructor for PointDataLeafNode to precisely
-      match those provided by OpenVDB Leaf nodes (contributed by ILM).
-
-    Houdini:
-    - Multi-thread the conversion from VDB Points back to Houdini points using
-      OpenVDB Points SOP.
-
-    Clarisse:
-    - New Isotropix Clarisse ray-tracing module introduced to provide native
-      VDB point ray-tracing and geometry instancing.
