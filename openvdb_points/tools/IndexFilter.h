@@ -101,6 +101,49 @@ private:
 }; // class RandomLeafFilter
 
 
+struct RandomFilterByAttributeData
+{
+    RandomFilterByAttributeData(const float _factor, const Name& _attribute)
+        : factor(_factor), attribute(_attribute) { }
+    const float factor;
+    const Name attribute;
+};
+
+
+// Random Threshold Filter using Point Attribute
+template <typename SeedT>
+class RandomFilterByAttribute
+{
+public:
+    typedef RandomFilterByAttributeData Data;
+
+    RandomFilterByAttribute(   const Data& data,
+                    const typename AttributeHandle<SeedT>::Ptr& randomSeedHandle)
+        : mData(data)
+        , mSeedHandle(randomSeedHandle) { }
+
+    template <typename LeafT>
+    static RandomFilterByAttribute create(const LeafT& leaf, const Data& data) {
+        return RandomFilterByAttribute(data, AttributeHandle<SeedT>::create(leaf.constAttributeArray(data.attribute)));
+    }
+
+    template <typename IterT>
+    bool valid(const IterT& iter) const {
+        if (mData.factor >= 1.0f)       return true;
+        else if (mData.factor <= 0.0f)  return false;
+
+        const SeedT id = mSeedHandle->get(*iter);
+        boost::mt19937 generator((long)id);
+        boost::uniform_01<boost::mt19937> dist(generator);
+        return float(dist()) < mData.factor;
+    }
+
+private:
+    const Data mData;
+    const typename AttributeHandle<SeedT>::Ptr mSeedHandle;
+}; // class RandomFilterByAttribute
+
+
 // BBox index filtering
 class BBoxFilter
 {
@@ -143,6 +186,72 @@ private:
     const Data mData;
     const AttributeHandle<openvdb::Vec3f>::Ptr mPositionHandle;
 }; // class BBoxFilter
+
+
+enum BinaryFilterOp
+{
+    And = 0,
+    Or
+};
+
+
+// Index filtering based on evaluating both sub-filters
+template <typename T1, typename T2, BinaryFilterOp Op>
+class BinaryFilter
+{
+public:
+    typedef BinaryFilter<T1, T2, Op> FilterT;
+
+    struct Data
+    {
+        Data(const typename T1::Data& _filterData1,
+             const typename T2::Data& _filterData2)
+            : filterData1(_filterData1)
+            , filterData2(_filterData2) { }
+        typename T1::Data filterData1;
+        typename T2::Data filterData2;
+    };
+
+    BinaryFilter(  const T1& filter1,
+                const T2& filter2)
+        : mFilter1(filter1)
+        , mFilter2(filter2) { }
+
+    template <typename LeafT>
+    static FilterT create(const LeafT& leaf, const Data& data) {
+        return FilterT( T1::create(leaf, data.filterData1),
+                        T2::create(leaf, data.filterData2));
+    }
+
+    template <typename IterT>
+    bool valid(const IterT& iter) const {
+        if (Op == And)      return mFilter1.valid(iter) && mFilter2.valid(iter);
+        else if (Op == Or)  return mFilter1.valid(iter) || mFilter2.valid(iter);
+        return false;
+    }
+
+private:
+    const T1 mFilter1;
+    const T2 mFilter2;
+}; // class BinaryFilter
+
+
+////////////////////////////////////////
+
+
+template<typename T>
+struct FilterTraits {
+    static const bool RequiresCoord = true;
+};
+template<>
+struct FilterTraits<BBoxFilter> {
+    static const bool RequiresCoord = true;
+};
+template <typename T0, typename T1, BinaryFilterOp Op>
+struct FilterTraits<BinaryFilter<T0, T1, Op> > {
+    static const bool RequiresCoord =   FilterTraits<T0>::RequiresCoord ||
+                                        FilterTraits<T1>::RequiresCoord;
+};
 
 
 ////////////////////////////////////////

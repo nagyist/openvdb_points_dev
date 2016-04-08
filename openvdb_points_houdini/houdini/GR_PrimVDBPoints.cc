@@ -87,6 +87,9 @@ tbb::mutex sRenderHookRegistryMutex;
 static bool renderHookRegistered = false;
 
 
+using namespace openvdb;
+using namespace openvdb::tools;
+
 ////////////////////////////////////////
 
 
@@ -293,15 +296,27 @@ struct FillGPUBuffersPosition {
                             const LeafOffsets& leafOffsets,
                             const PointDataTreeType& pointDataTree,
                             const openvdb::math::Transform& transform,
-                            const unsigned attributeIndex)
+                            const unsigned attributeIndex,
+                            const std::string& groupName = "")
         : mBuffer(buffer)
         , mPointDataTree(pointDataTree)
         , mLeafOffsets(leafOffsets)
         , mTransform(transform)
-        , mAttributeIndex(attributeIndex) { }
+        , mAttributeIndex(attributeIndex)
+        , mGroupName(groupName) { }
+
+    inline UT_Vector3H voxelSpaceToUTVector(const openvdb::Vec3f& positionVoxelSpace,
+                                            const openvdb::Vec3f& gridIndexSpace,
+                                            const openvdb::math::Transform& transform) const
+    {
+        const openvdb::Vec3f positionWorldSpace = transform.indexToWorld(positionVoxelSpace + gridIndexSpace);
+        return UT_Vector3H(positionWorldSpace.x(), positionWorldSpace.y(), positionWorldSpace.z());
+    }
 
     void operator()(const tbb::blocked_range<size_t>& range) const
     {
+        const bool useGroup = !mGroupName.empty();
+
         for (size_t n = range.begin(), N = range.end(); n != N; ++n) {
 
             const LeafNode* leaf = mLeafOffsets[n].first;
@@ -327,16 +342,23 @@ struct FillGPUBuffersPosition {
 
                 openvdb::tools::IndexIter iter = leaf->beginIndex(ijk);
 
-                for (; iter; ++iter)
-                {
-                    if (!uniform)   positionVoxelSpace = handle->get(openvdb::Index64(*iter));
-                    const openvdb::Vec3f positionIndexSpace = positionVoxelSpace + gridIndexSpace;
-                    const openvdb::Vec3f positionWorldSpace = mTransform.indexToWorld(positionIndexSpace);
+                if (useGroup) {
+                    const GroupFilter filter = GroupFilter::create(*leaf, GroupFilter::Data(mGroupName));
+                    openvdb::tools::FilterIndexIter<openvdb::tools::IndexIter, GroupFilter> filterIndexIter(iter, filter);
 
-                    mBuffer[leafOffset + offset] = UT_Vector3H(
-                        positionWorldSpace.x(), positionWorldSpace.y(), positionWorldSpace.z());
+                    for (; filterIndexIter; ++filterIndexIter)
+                    {
+                        if (!uniform)   positionVoxelSpace = handle->get(openvdb::Index64(*filterIndexIter));
+                        mBuffer[leafOffset + offset++] = voxelSpaceToUTVector(positionVoxelSpace, gridIndexSpace, mTransform);
+                    }
+                }
+                else {
 
-                    offset++;
+                    for (; iter; ++iter)
+                    {
+                        if (!uniform)   positionVoxelSpace = handle->get(openvdb::Index64(*iter));
+                        mBuffer[leafOffset + offset++] = voxelSpaceToUTVector(positionVoxelSpace, gridIndexSpace, mTransform);
+                    }
                 }
             }
         }
@@ -349,6 +371,7 @@ struct FillGPUBuffersPosition {
     const PointDataTreeType&            mPointDataTree;
     const openvdb::math::Transform&     mTransform;
     const unsigned                      mAttributeIndex;
+    const std::string                   mGroupName;
 }; // class FillGPUBuffersPosition
 
 
@@ -585,25 +608,29 @@ GR_PrimVDBPoints::updatePosBuffer(RE_Render* r,
 
     if (tree.leafCount() == 0)  return;
 
+    TreeType::LeafCIter iter = tree.cbeginLeaf();
+
+    const AttributeSet::Descriptor& descriptor = iter->attributeSet().descriptor();
+
+    // check if group viewport is in use
+
+    const std::string META_GROUP_VIEWPORT = "group_viewport";
+
+    std::string groupName = "";
+    if (openvdb::StringMetadata::ConstPtr s = grid.getMetadata<openvdb::StringMetadata>(META_GROUP_VIEWPORT)) {
+        groupName = s->value();
+    }
+    const bool useGroup = !groupName.empty() && descriptor.hasGroup(groupName);
+
     // count up total points ignoring any leaf nodes that are out of core
 
-    size_t numPoints = 0;
-    for (TreeType::LeafCIter iter = tree.cbeginLeaf(); iter; ++iter)
-    {
-        if (!iter->buffer().isOutOfCore()) {
-            numPoints += iter->pointCount();
-        }
-    }
+    const size_t numPoints = useGroup ? groupPointCount(tree, groupName, /*inCoreOnly=*/true) : pointCount(tree, /*inCoreOnly=*/true);
 
     if (numPoints == 0)    return;
 
     // Initialize the number of points in the geometry.
 
     myGeo->setNumPoints(int(numPoints));
-
-    TreeType::LeafCIter iter = tree.cbeginLeaf();
-
-    const AttributeSet::Descriptor& descriptor = iter->attributeSet().descriptor();
 
     const size_t positionIndex = descriptor.find("P");
 
@@ -637,7 +664,7 @@ GR_PrimVDBPoints::updatePosBuffer(RE_Render* r,
             // skip out-of-core leaf nodes (used when delay loading VDBs)
             if (leaf.buffer().isOutOfCore())    continue;
 
-            const openvdb::Index64 count = leaf.pointCount();
+            const openvdb::Index64 count = useGroup ? leaf.groupPointCount(groupName) : leaf.pointCount();
 
             offsets.push_back(LeafOffsets::value_type(&leaf, cumulativeOffset));
 
@@ -655,7 +682,8 @@ GR_PrimVDBPoints::updatePosBuffer(RE_Render* r,
                                                   offsets,
                                                   grid.tree(),
                                                   grid.transform(),
-                                                  positionIndex);
+                                                  positionIndex,
+                                                  useGroup ? groupName : "");
 
         const tbb::blocked_range<size_t> range(0, offsets.size());
         tbb::parallel_for(range, fill);
