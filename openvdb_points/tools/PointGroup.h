@@ -41,6 +41,7 @@
 
 #include <openvdb/openvdb.h>
 
+#include <openvdb_points/tools/IndexFilter.h> // FilterTraits
 #include <openvdb_points/tools/AttributeSet.h>
 #include <openvdb_points/tools/PointDataGrid.h>
 #include <openvdb_points/tools/PointAttribute.h>
@@ -112,6 +113,16 @@ inline void setGroup(   PointDataTree& tree,
                         const std::vector<bool>& membership,
                         const Name& group,
                         const bool remove = false);
+
+/// @brief Sets group membership based on a provided filter.
+///
+/// @param tree          the PointDataTree.
+/// @param group         the name of the group.
+/// @param filterData    filter data that is used to create a per-leaf filter
+template <typename PointDataTree, typename FilterT>
+inline void setGroupByFilter(   PointDataTree& tree,
+                                const Name& group,
+                                const typename FilterT::Data filterData);
 
 
 ////////////////////////////////////////
@@ -246,6 +257,59 @@ struct SetGroupFromIndexOp
     const BoolArray& mMembership;
     const GroupIndex mIndex;
 }; // struct SetGroupFromIndexOp
+
+
+template <typename PointDataTree, typename FilterT>
+struct SetGroupByFilterOp
+{
+    typedef typename tree::LeafManager<PointDataTree>   LeafManagerT;
+    typedef typename LeafManagerT::LeafRange            LeafRangeT;
+    typedef typename PointDataTree::LeafNodeType        LeafNodeT;
+    typedef AttributeSet::Descriptor::GroupIndex        GroupIndex;
+    typedef typename FilterT::Data                      FilterDataT;
+
+    SetGroupByFilterOp( const GroupIndex& index, const FilterDataT& filterData)
+        : mIndex(index)
+        , mFilterData(filterData) { }
+
+    void operator()(const typename LeafManagerT::LeafRange& range) const
+    {
+        for (typename LeafManagerT::LeafRange::Iterator leaf=range.begin(); leaf; ++leaf) {
+
+            // obtain the group attribute array
+
+            GroupWriteHandle group(leaf->groupWriteHandle(mIndex));
+
+            // create the filter
+
+            FilterT filter(FilterT::create(*leaf, mFilterData));
+
+            // Use an IndexOnIter if a voxel Coord is required, otherwise an IndexIter will be faster
+
+            if (FilterTraits<FilterT>::RequiresCoord) {
+                typename LeafNodeT::IndexOnIter iter = leaf->beginIndexOn();
+                FilterIndexIter<typename LeafNodeT::IndexOnIter, FilterT> filterIndexIter(iter, filter);
+
+                for (; filterIndexIter; ++filterIndexIter) {
+                    group.set(*filterIndexIter, true);
+                }
+            }
+            else {
+                IndexIter iter = leaf->beginIndexAll();
+                FilterIndexIter<IndexIter, FilterT> filterIndexIter(iter, filter);
+
+                for (; filterIndexIter; ++filterIndexIter) {
+                    group.set(*filterIndexIter, true);
+                }
+            }
+        }
+    }
+
+    //////////
+
+    const GroupIndex mIndex;
+    const FilterDataT mFilterData;
+}; // struct SetGroupByFilterOp
 
 
 ////////////////////////////////////////
@@ -652,6 +716,39 @@ inline void setGroup(   PointDataTree& tree,
 
     if (member)     tbb::parallel_for(LeafManagerT(tree).leafRange(), SetGroupOp<PointDataTree, true>(index));
     else            tbb::parallel_for(LeafManagerT(tree).leafRange(), SetGroupOp<PointDataTree, false>(index));
+}
+
+
+////////////////////////////////////////
+
+
+template <typename PointDataTree, typename FilterT>
+inline void setGroupByFilter(   PointDataTree& tree,
+                                const Name& group,
+                                const typename FilterT::Data filterData)
+{
+    typedef AttributeSet::Descriptor Descriptor;
+    typedef typename tree::template LeafManager<PointDataTree> LeafManagerT;
+
+    using point_group_internal::SetGroupByFilterOp;
+
+    typename PointDataTree::LeafCIter iter = tree.cbeginLeaf();
+
+    if (!iter)  return;
+
+    const AttributeSet& attributeSet = iter->attributeSet();
+    const Descriptor& descriptor = attributeSet.descriptor();
+
+    if (!descriptor.hasGroup(group)) {
+        OPENVDB_THROW(LookupError, "Group must exist on Tree before defining membership.");
+    }
+
+    const Descriptor::GroupIndex index = attributeSet.groupIndex(group);
+
+    // set membership using filter
+
+    SetGroupByFilterOp<PointDataTree, FilterT> set(index, filterData);
+    tbb::parallel_for(LeafManagerT(tree).leafRange(), set);
 }
 
 
