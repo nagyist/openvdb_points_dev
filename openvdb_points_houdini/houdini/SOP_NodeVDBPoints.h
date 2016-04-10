@@ -219,6 +219,11 @@ public:
             infoStr <<" <empty>,";
         }
 
+        std::string viewportGroupName = "";
+        if (openvdb::StringMetadata::ConstPtr stringMeta = grid.getMetadata<openvdb::StringMetadata>(openvdb::META_GROUP_VIEWPORT)) {
+            viewportGroupName = stringMeta->value();
+        }
+
         const PointDataTree& pointDataTree = pointDataGrid->tree();
 
         PointDataTree::LeafCIter iter = pointDataTree.cbeginLeaf();
@@ -246,6 +251,9 @@ public:
                 else {
                     infoStr << ", ";
                 }
+
+                // add an asterisk as a viewport group indicator
+                if (it->first == viewportGroupName)     infoStr << "*";
 
                 infoStr << it->first << "(";
 
