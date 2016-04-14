@@ -47,6 +47,8 @@
 #include <openvdb_points/tools/IndexIterator.h>
 #include <openvdb_points/tools/AttributeArray.h>
 
+#include <boost/random/uniform_real_distribution.hpp>
+
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
@@ -89,6 +91,7 @@ void generateRandomSubset(std::vector<IntType>& values, const unsigned int seed,
     // sort the subset of the indices vector that will be used
     std::sort(values.begin(), values.begin() + n);
 }
+
 
 } // namespace index_filter_internal
 
@@ -197,6 +200,47 @@ private:
     int mSubsetOffset;
     int mNextIndex;
 }; // class RandomLeafFilter
+
+
+// Hash attribute value for deterministic, but approximate filtering
+template <typename RandGenT, typename IntType>
+class AttributeHashFilter
+{
+public:
+    struct Data
+    {
+        Data(const size_t _index, const float _percentage, const unsigned int _seed = 0)
+            : index(_index)
+            , factor(_percentage / 100.0f)
+            , seed(_seed) { }
+
+        const size_t index;
+        const float factor;
+        const unsigned int seed;
+    };
+
+    AttributeHashFilter(const Data& data,
+                        const typename AttributeHandle<IntType>::Ptr& idHandle)
+        : mData(data)
+        , mIdHandle(idHandle) { }
+
+    template <typename LeafT>
+    static AttributeHashFilter create(const LeafT& leaf, const Data& data) {
+        return AttributeHashFilter(data, AttributeHandle<IntType>::create(leaf.constAttributeArray(data.index)));
+    }
+
+    template <typename IterT>
+    bool valid(const IterT& iter) const {
+        const IntType id = mIdHandle->get(*iter);
+        const unsigned int seed = mData.seed + (unsigned int) id;
+        math::Rand01<double, RandGenT> randGen(seed);
+        return randGen() < double(mData.factor);
+    }
+
+private:
+    const Data& mData;
+    const typename AttributeHandle<IntType>::Ptr mIdHandle;
+}; // class AttributeHashFilter
 
 
 // BBox index filtering
