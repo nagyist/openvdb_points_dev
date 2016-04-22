@@ -41,6 +41,7 @@
 
 #include <openvdb_points/tools/AttributeArray.h>
 
+#include <boost/ptr_container/ptr_vector.hpp>
 
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
@@ -122,17 +123,18 @@ public:
 
     typedef std::pair<size_t, uint8_t> GroupIndex;
 
-    GroupHandle(const GroupAttributeArray& array, const GroupType& offset);
-    GroupHandle(const GroupAttributeArray& array, const GroupType& bitMask, BitMask);
+    GroupHandle(const GroupAttributeArray& array, const GroupType offset);
+    GroupHandle(const GroupAttributeArray& array, const GroupType bitMask, BitMask);
+    GroupHandle(const GroupHandle& other);
 
-    size_t size() const { return mArray.size(); }
-    bool isUniform() const { return mArray.isUniform(); }
+    size_t size() const { return mArray->size(); }
+    bool isUniform() const { return mArray->isUniform(); }
 
     bool get(Index n) const;
 
 protected:
-    const GroupAttributeArray& mArray;
-    const GroupType mBitMask;
+    const GroupAttributeArray* mArray;
+    GroupType mBitMask;
 }; // class GroupHandle
 
 

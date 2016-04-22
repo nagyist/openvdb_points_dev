@@ -73,26 +73,35 @@ void GroupAttributeArray::setGroup(bool state)
 // GroupHandle implementation
 
 
-GroupHandle::GroupHandle(const GroupAttributeArray& array, const GroupType& offset)
-        : mArray(array)
+GroupHandle::GroupHandle(const GroupAttributeArray& array, const GroupType offset)
+        : mArray(&array)
         , mBitMask(GroupType(1) << offset)
 {
-    assert(mArray.isGroup());
+    assert(mArray->isGroup());
 }
 
 
-GroupHandle::GroupHandle(const GroupAttributeArray& array, const GroupType& bitMask,
+GroupHandle::GroupHandle(const GroupAttributeArray& array, const GroupType bitMask,
             BitMask)
-    : mArray(array)
+    : mArray(&array)
     , mBitMask(bitMask)
 {
-    assert(mArray.isGroup());
+    assert(mArray->isGroup());
+}
+
+
+GroupHandle::GroupHandle(const GroupHandle& other)
+    : mArray(other.mArray)
+    , mBitMask(other.mBitMask)
+{
+    assert(mArray && mArray->isGroup());
 }
 
 
 bool GroupHandle::get(Index n) const
 {
-    return (mArray.get(n) & mBitMask) == mBitMask;
+    assert(mArray && mArray->isGroup());
+    return (mArray->get(n) & mBitMask) == mBitMask;
 }
 
 
@@ -109,9 +118,9 @@ GroupWriteHandle::GroupWriteHandle(GroupAttributeArray& array, const GroupType& 
 
 void GroupWriteHandle::set(Index n, bool on)
 {
-    const GroupType& value = mArray.get(n);
+    const GroupType& value = mArray->get(n);
 
-    GroupAttributeArray& array(const_cast<GroupAttributeArray&>(mArray));
+    GroupAttributeArray& array(const_cast<GroupAttributeArray&>(*mArray));
 
     if (on)     array.set(n, value | mBitMask);
     else        array.set(n, value & ~mBitMask);
@@ -120,7 +129,7 @@ void GroupWriteHandle::set(Index n, bool on)
 
 bool GroupWriteHandle::collapse(bool on)
 {
-    GroupAttributeArray& array(const_cast<GroupAttributeArray&>(mArray));
+    GroupAttributeArray& array(const_cast<GroupAttributeArray&>(*mArray));
 
     array.compact();
 
