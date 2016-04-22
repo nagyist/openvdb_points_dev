@@ -191,7 +191,7 @@ public:
     template <typename IterT>
     bool valid(const IterT& iter) const {
         const int index = *iter;
-        if (mNextIndex < index)     this->next();
+        while (mNextIndex < index)     this->next();
         return mNextIndex == index;
     }
 
