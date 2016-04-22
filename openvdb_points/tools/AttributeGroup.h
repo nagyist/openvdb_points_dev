@@ -197,6 +197,67 @@ private:
 ////////////////////////////////////////
 
 
+/// Index filtering on multiple group membership for inclusion and exclusion
+class MultiGroupFilter
+{
+public:
+    typedef std::vector<Name> NameVector;
+    typedef boost::ptr_vector<GroupHandle> HandleVector;
+
+    struct Data
+    {
+        Data(   const NameVector& _include,
+                const NameVector& _exclude)
+            : include(_include)
+            , exclude(_exclude) { }
+        const NameVector include;
+        const NameVector exclude;
+    };
+
+    MultiGroupFilter(   const HandleVector& includeHandles,
+                        const HandleVector& excludeHandles)
+        : mEmpty(includeHandles.size() == 0 && excludeHandles.size() == 0)
+        , mIncludeHandles(includeHandles)
+        , mExcludeHandles(excludeHandles) { }
+
+    template <typename LeafT>
+    static MultiGroupFilter create(const LeafT& leaf, const Data& data) {
+        HandleVector include;
+        HandleVector exclude;
+        for (NameVector::const_iterator  it = data.include.begin(),
+                                                itEnd = data.include.end(); it != itEnd; ++it) {
+            if (!leaf.attributeSet().descriptor().hasGroup(*it))    continue;
+            include.push_back(new GroupHandle(leaf.groupHandle(*it)));
+        }
+        for (NameVector::const_iterator  it = data.exclude.begin(),
+                                                itEnd = data.exclude.end(); it != itEnd; ++it) {
+            if (!leaf.attributeSet().descriptor().hasGroup(*it))    continue;
+            exclude.push_back(new GroupHandle(leaf.groupHandle(*it)));
+        }
+        return MultiGroupFilter(include, exclude);
+    }
+
+    template <typename IterT>
+    bool valid(const IterT& iter) const {
+        if (mEmpty)     return true;
+        for (HandleVector::const_iterator   it = mIncludeHandles.begin(),
+                                            itEnd = mIncludeHandles.end(); it != itEnd; ++it) {
+            if (!it->get(*iter))    return false;
+        }
+        for (HandleVector::const_iterator   it = mExcludeHandles.begin(),
+                                            itEnd = mExcludeHandles.end(); it != itEnd; ++it) {
+            if (it->get(*iter))     return false;
+        }
+        return true;
+    }
+
+private:
+    bool mEmpty;
+    HandleVector mIncludeHandles;
+    HandleVector mExcludeHandles;
+}; // class GroupFilter
+
+
 } // namespace tools
 
 } // namespace OPENVDB_VERSION_NAME
