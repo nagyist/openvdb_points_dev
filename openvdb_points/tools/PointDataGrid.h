@@ -83,6 +83,15 @@ typedef tree::Tree<tree::RootNode<tree::InternalNode<tree::InternalNode
 typedef Grid<PointDataTree> PointDataGrid;
 
 
+/// @brief  Deep copy the descriptor across all leaf nodes.
+///
+/// @param  tree the PointDataTree.
+///
+/// @note This method will fail if the Descriptors in the tree are not all identical.
+inline void
+makeDescriptorUnique(PointDataTree& tree);
+
+
 ////////////////////////////////////////
 
 // Internal utility methods
@@ -894,6 +903,24 @@ PointDataLeafNode<T, Log2Dim>::memUsage() const
 {
     return BaseLeaf::memUsage() + mAttributeSet->memUsage();
 }
+
+
+////////////////////////////////////////
+
+
+inline void
+makeDescriptorUnique(PointDataTree& tree)
+{
+    PointDataTree::LeafIter leafIter = tree.beginLeaf();
+    if (!leafIter)  return;
+
+    const AttributeSet::Descriptor& descriptor = leafIter->attributeSet().descriptor();
+    AttributeSet::Descriptor::Ptr newDescriptor(new AttributeSet::Descriptor(descriptor));
+    for (; leafIter; ++leafIter) {
+        leafIter->renameAttributes(descriptor, newDescriptor);
+    }
+}
+
 
 } // namespace tools
 
