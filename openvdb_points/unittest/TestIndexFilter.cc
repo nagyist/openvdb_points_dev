@@ -34,6 +34,7 @@
 #include <openvdb_points/tools/IndexFilter.h>
 #include <openvdb_points/tools/PointAttribute.h>
 #include <openvdb_points/tools/PointConversion.h>
+#include <openvdb_points/tools/PointGroup.h>
 
 #include <boost/random/mersenne_twister.hpp>
 
@@ -47,6 +48,7 @@ class TestIndexFilter: public CppUnit::TestCase
 {
 public:
     CPPUNIT_TEST_SUITE(TestIndexFilter);
+    CPPUNIT_TEST(testMultiGroupFilter);
     CPPUNIT_TEST(testRandomLeafFilter);
     CPPUNIT_TEST(testAttributeHashFilter);
     CPPUNIT_TEST(testLevelSetFilter);
@@ -54,6 +56,7 @@ public:
     CPPUNIT_TEST(testBinaryFilter);
     CPPUNIT_TEST_SUITE_END();
 
+    void testMultiGroupFilter();
     void testRandomLeafFilter();
     void testAttributeHashFilter();
     void testLevelSetFilter();
@@ -144,6 +147,81 @@ makeSphere(const openvdb::Coord& dim, const openvdb::Vec3f& center, float radius
                 acc.setValue(xyz, val);
             }
         }
+    }
+}
+
+
+void
+TestIndexFilter::testMultiGroupFilter()
+{
+    using namespace openvdb;
+    using namespace openvdb::tools;
+
+    typedef FilterIndexIter<IndexIter, MultiGroupFilter> IndexGroupIter;
+    typedef PointDataTree::LeafNodeType LeafNode;
+    typedef openvdb::tools::TypedAttributeArray<float>    AttributeS;
+
+    AttributeS::registerType();
+    GroupAttributeArray::registerType();
+
+    PointDataTree tree;
+    LeafNode* leaf = tree.touchLeaf(openvdb::Coord(0, 0, 0));
+
+    AttributeSet::Descriptor::Inserter names;
+    names.add("density", AttributeS::attributeType());
+    AttributeSet::Descriptor::Ptr descriptor = AttributeSet::Descriptor::create(names.vec);
+
+    leaf->initializeAttributes(descriptor, /*size=*/5);
+
+    appendGroup(tree, "even");
+    appendGroup(tree, "odd");
+    appendGroup(tree, "all");
+    appendGroup(tree, "first");
+
+    { // even
+        GroupWriteHandle groupHandle = leaf->groupWriteHandle("even");
+        groupHandle.set(0, true);
+        groupHandle.set(2, true);
+        groupHandle.set(4, true);
+    }
+
+    { // odd
+        GroupWriteHandle groupHandle = leaf->groupWriteHandle("odd");
+        groupHandle.set(1, true);
+        groupHandle.set(3, true);
+    }
+
+    GroupWriteHandle allGroupHandle = leaf->groupWriteHandle("all");
+
+    setGroup(tree, "all", true);
+
+    GroupHandle groupHandle = leaf->groupHandle("all");
+
+    { // first
+        GroupWriteHandle groupHandle = leaf->groupWriteHandle("first");
+        groupHandle.set(0, true);
+    }
+
+    GroupHandle groupHandle2 = leaf->groupHandle("all");
+
+    IndexIter indexIter(0, 5);
+
+    { // all include
+        std::vector<Name> include; include.push_back("all");
+        std::vector<Name> exclude;
+        MultiGroupFilter::Data data(include, exclude);
+        MultiGroupFilter filter = MultiGroupFilter::create(*leaf, data);
+        IndexGroupIter iter(indexIter, filter);
+        CPPUNIT_ASSERT_EQUAL(iterCount(iter), size_t(5));
+    }
+
+    { // all exclude
+        std::vector<Name> include;
+        std::vector<Name> exclude; exclude.push_back("all");
+        MultiGroupFilter::Data data(include, exclude);
+        MultiGroupFilter filter = MultiGroupFilter::create(*leaf, data);
+        IndexGroupIter iter(indexIter, filter);
+        CPPUNIT_ASSERT_EQUAL(iterCount(iter), size_t(0));
     }
 }
 
