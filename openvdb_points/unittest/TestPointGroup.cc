@@ -74,7 +74,7 @@ public:
     FirstFilter() { }
 
     template <typename LeafT>
-    static FirstFilter create(const LeafT& leaf, const Data& data) {
+    static FirstFilter create(const LeafT&, const Data&) {
         return FirstFilter();
     }
 
@@ -461,8 +461,6 @@ TestPointGroup::testFilter()
         BBoxFilter::Data data(*transform, bbox);
 
         setGroupByFilter<PointDataTree, BBoxFilter>(tree, "bbox", data);
-
-        PointDataTree::LeafCIter iter = tree.cbeginLeaf();
 
         CPPUNIT_ASSERT_EQUAL(groupPointCount(tree, "bbox"), Index64(3));
     }

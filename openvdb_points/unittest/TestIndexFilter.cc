@@ -105,7 +105,7 @@ public:
     ThresholdFilter(const int threshold) : mThreshold(threshold) { }
 
     template <typename LeafT>
-    static ThresholdFilter create(const LeafT& leaf, const Data& data) {
+    static ThresholdFilter create(const LeafT&, const Data& data) {
         return ThresholdFilter(data.threshold);
     }
 
@@ -191,18 +191,12 @@ TestIndexFilter::testMultiGroupFilter()
         groupHandle.set(3, true);
     }
 
-    GroupWriteHandle allGroupHandle = leaf->groupWriteHandle("all");
-
     setGroup(tree, "all", true);
-
-    GroupHandle groupHandle = leaf->groupHandle("all");
 
     { // first
         GroupWriteHandle groupHandle = leaf->groupWriteHandle("first");
         groupHandle.set(0, true);
     }
-
-    GroupHandle groupHandle2 = leaf->groupHandle("all");
 
     IndexIter indexIter(0, 5);
 
@@ -340,7 +334,7 @@ void setId(PointDataTree& tree, const size_t index, const std::vector<int>& ids)
         AttributeWriteHandle<int>::Ptr id = AttributeWriteHandle<int>::create(leafIter->attributeArray(index));
 
         for (PointDataTree::LeafNodeType::IndexIter iter = leafIter->beginIndexAll(); iter; ++iter) {
-            if (offset >= ids.size())   throw std::runtime_error("Out of range");
+            if (offset >= int(ids.size()))   throw std::runtime_error("Out of range");
 
             id->set(*iter, ids[offset++]);
         }
@@ -495,7 +489,6 @@ TestIndexFilter::testLevelSetFilter()
     using namespace openvdb::tools;
 
     typedef TypedAttributeArray<Vec3s>   AttributeVec3s;
-    typedef PointDataTree::LeafNodeType::ValueOnCIter ValueOnCIter;
 
     AttributeVec3s::registerType();
 
@@ -755,7 +748,6 @@ TestIndexFilter::testBinaryFilter()
 
     { // greater than
         GreaterThanFilter filter = GreaterThanFilter::create(OriginLeaf(Coord(0, 0, 0)), GreaterThanFilter::Data(94));
-        GreaterThanFilter filter2 = filter;
         std::vector<int> values;
 
         for (SimpleIter iter; *iter < 100; ++iter) {

@@ -67,7 +67,7 @@ template <typename RandGenT, typename IntType>
 struct RandGen
 {
     RandGen(const unsigned int seed, const IntType length) : randGen(seed, 0, length-1) { }
-    IntType operator()(IntType n) { return randGen(); }
+    IntType operator()(IntType) { return randGen(); }
     openvdb::math::RandInt<IntType, RandGenT> randGen;
 };
 
