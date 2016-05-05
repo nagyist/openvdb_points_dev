@@ -259,12 +259,13 @@ struct SetGroupFromIndexOp
 }; // struct SetGroupFromIndexOp
 
 
-template <typename PointDataTree, typename FilterT>
+template <typename PointDataTree, typename FilterT, typename IterT = typename PointDataTree::LeafNodeType::ValueAllCIter>
 struct SetGroupByFilterOp
 {
     typedef typename tree::LeafManager<PointDataTree>   LeafManagerT;
     typedef typename LeafManagerT::LeafRange            LeafRangeT;
     typedef typename PointDataTree::LeafNodeType        LeafNodeT;
+    typedef IndexIterTraits<PointDataTree, IterT>       IndexIterTraitT;
     typedef AttributeSet::Descriptor::GroupIndex        GroupIndex;
     typedef typename FilterT::Data                      FilterDataT;
 
@@ -284,19 +285,20 @@ struct SetGroupByFilterOp
 
             FilterT filter(FilterT::create(*leaf, mFilterData));
 
-            // Use an IndexOnIter if a voxel Coord is required, otherwise an IndexIter will be faster
+            // if the voxel coord is not required and we're using a dense All iterator
+            // iterate over the attribute arrays directly for faster performance
 
-            if (FilterTraits<FilterT>::RequiresCoord) {
-                typename LeafNodeT::IndexOnIter iter = leaf->beginIndexOn();
-                FilterIndexIter<typename LeafNodeT::IndexOnIter, FilterT> filterIndexIter(iter, filter);
+            if (!FilterTraits<FilterT>::RequiresCoord && IndexIterTraitT::dense()) {
+                IndexIter iter = leaf->beginIndex();
+                FilterIndexIter<IndexIter, FilterT> filterIndexIter(iter, filter);
 
                 for (; filterIndexIter; ++filterIndexIter) {
                     group.set(*filterIndexIter, true);
                 }
             }
             else {
-                typename LeafNodeT::IndexOnIter iter = leaf->beginIndexOn();
-                FilterIndexIter<typename LeafNodeT::IndexOnIter, FilterT> filterIndexIter(iter, filter);
+                typename IndexIterTraitT::Iterator iter = IndexIterTraitT::begin(*leaf);
+                FilterIndexIter<typename IndexIterTraitT::Iterator, FilterT> filterIndexIter(iter, filter);
 
                 for (; filterIndexIter; ++filterIndexIter) {
                     group.set(*filterIndexIter, true);
