@@ -91,8 +91,11 @@ void generateRandomSubset(std::vector<IntType>& values, const unsigned int seed,
     RandGen<RandGenT, IntType> randGen(seed, m);
     std::random_shuffle(values.begin(), values.end(), randGen);
 
+    // resize the container to n elements (does not reduce capacity)
+    values.resize(n);
+
     // sort the subset of the indices vector that will be used
-    std::sort(values.begin(), values.begin() + n);
+    std::sort(values.begin(), values.end());
 }
 
 

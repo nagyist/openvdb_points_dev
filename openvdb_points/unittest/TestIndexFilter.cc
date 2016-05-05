@@ -232,13 +232,13 @@ TestIndexFilter::testRandomLeafFilter()
 
         index_filter_internal::generateRandomSubset<boost::mt19937, int>(values, /*seed*/(unsigned) 0, 1, 20);
 
-        CPPUNIT_ASSERT_EQUAL(values.size(), size_t(20));
+        CPPUNIT_ASSERT_EQUAL(values.size(), size_t(1));
 
         // different seed
 
         index_filter_internal::generateRandomSubset<boost::mt19937, int>(values2, /*seed*/(unsigned) 1, 1, 20);
 
-        CPPUNIT_ASSERT_EQUAL(values2.size(), size_t(20));
+        CPPUNIT_ASSERT_EQUAL(values2.size(), size_t(1));
         CPPUNIT_ASSERT(values[0] != values2[0]);
 
         // different integer type
@@ -247,7 +247,7 @@ TestIndexFilter::testRandomLeafFilter()
 
         index_filter_internal::generateRandomSubset<boost::mt19937, long>(values3, /*seed*/(unsigned) 0, 1, 20);
 
-        CPPUNIT_ASSERT_EQUAL(values3.size(), size_t(20));
+        CPPUNIT_ASSERT_EQUAL(values3.size(), size_t(1));
         CPPUNIT_ASSERT(values[0] == values3[0]);
 
         // different random number generator
@@ -256,7 +256,7 @@ TestIndexFilter::testRandomLeafFilter()
 
         index_filter_internal::generateRandomSubset<boost::mt11213b, int>(values, /*seed*/(unsigned) 1, 1, 20);
 
-        CPPUNIT_ASSERT_EQUAL(values.size(), size_t(20));
+        CPPUNIT_ASSERT_EQUAL(values.size(), size_t(1));
         CPPUNIT_ASSERT(values[0] != values2[0]);
 
         // no values
