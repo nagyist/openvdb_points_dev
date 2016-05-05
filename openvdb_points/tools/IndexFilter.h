@@ -270,13 +270,13 @@ class AttributeHashFilter
 public:
     struct Data
     {
-        Data(const size_t _index, const float _percentage, const unsigned int _seed = 0)
+        Data(const size_t _index, const double _percentage, const unsigned int _seed = 0)
             : index(_index)
-            , factor(_percentage / 100.0f)
+            , factor(_percentage / 100.0)
             , seed(_seed) { }
 
         const size_t index;
-        const float factor;
+        const double factor;
         const unsigned int seed;
     };
 
@@ -295,7 +295,7 @@ public:
         const IntType id = mIdHandle->get(*iter);
         const unsigned int seed = mData.seed + (unsigned int) id;
         math::Rand01<double, RandGenT> randGen(seed);
-        return randGen() < double(mData.factor);
+        return randGen() < mData.factor;
     }
 
 private:
