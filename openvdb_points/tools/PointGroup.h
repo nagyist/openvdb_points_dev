@@ -295,7 +295,7 @@ struct SetGroupByFilterOp
                 }
             }
             else {
-                IndexIter iter = leaf->beginIndexAll();
+                IndexIter iter = leaf->beginIndexOn();
                 FilterIndexIter<IndexIter, FilterT> filterIndexIter(iter, filter);
 
                 for (; filterIndexIter; ++filterIndexIter) {
