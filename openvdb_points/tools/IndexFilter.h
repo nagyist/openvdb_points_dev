@@ -245,10 +245,10 @@ public:
     }
 
     inline void next() const {
-        const_cast<int&>(mSubsetOffset)++;
-        const_cast<int&>(mNextIndex) =  mSubsetOffset >= mCount ?
-                                        std::numeric_limits<int>::max() :
-                                        mIndices[mSubsetOffset];
+        mSubsetOffset++;
+        mNextIndex =    mSubsetOffset >= mCount ?
+                        std::numeric_limits<int>::max() :
+                        mIndices[mSubsetOffset];
     }
 
     template <typename IterT>
@@ -261,8 +261,8 @@ public:
 private:
     std::vector<int> mIndices;
     int mCount;
-    int mSubsetOffset;
-    int mNextIndex;
+    mutable int mSubsetOffset;
+    mutable int mNextIndex;
 }; // class RandomLeafFilter
 
 
