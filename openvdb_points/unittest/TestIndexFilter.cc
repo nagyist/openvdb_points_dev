@@ -333,7 +333,7 @@ void setId(PointDataTree& tree, const size_t index, const std::vector<int>& ids)
     for (PointDataTree::LeafIter leafIter = tree.beginLeaf(); leafIter; ++leafIter) {
         AttributeWriteHandle<int>::Ptr id = AttributeWriteHandle<int>::create(leafIter->attributeArray(index));
 
-        for (PointDataTree::LeafNodeType::IndexIter iter = leafIter->beginIndexAll(); iter; ++iter) {
+        for (PointDataTree::LeafNodeType::IndexIter iter = leafIter->beginIndex(); iter; ++iter) {
             if (offset >= int(ids.size()))   throw std::runtime_error("Out of range");
 
             id->set(*iter, ids[offset++]);
@@ -389,7 +389,7 @@ TestIndexFilter::testAttributeHashFilter()
 
         PointDataTree::LeafCIter leafIter = tree.cbeginLeaf();
 
-        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndexAll();
+        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndex();
         HashFilter filter = HashFilter::create(*leafIter, data);
 
         CPPUNIT_ASSERT(!filter.valid(indexIter));
@@ -399,7 +399,7 @@ TestIndexFilter::testAttributeHashFilter()
         CPPUNIT_ASSERT(!indexIter);
         ++leafIter;
 
-        indexIter = leafIter->beginIndexAll();
+        indexIter = leafIter->beginIndex();
         HashFilter filter2 = HashFilter::create(*leafIter, data);
         CPPUNIT_ASSERT(!filter2.valid(indexIter));
         ++indexIter;
@@ -413,7 +413,7 @@ TestIndexFilter::testAttributeHashFilter()
 
         PointDataTree::LeafCIter leafIter = tree.cbeginLeaf();
 
-        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndexAll();
+        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndex();
         HashFilter filter = HashFilter::create(*leafIter, data);
 
         CPPUNIT_ASSERT(filter.valid(indexIter));
@@ -423,7 +423,7 @@ TestIndexFilter::testAttributeHashFilter()
         CPPUNIT_ASSERT(!indexIter);
         ++leafIter;
 
-        indexIter = leafIter->beginIndexAll();
+        indexIter = leafIter->beginIndex();
         HashFilter filter2 = HashFilter::create(*leafIter, data);
         CPPUNIT_ASSERT(filter2.valid(indexIter));
         ++indexIter;
@@ -437,7 +437,7 @@ TestIndexFilter::testAttributeHashFilter()
 
         PointDataTree::LeafCIter leafIter = tree.cbeginLeaf();
 
-        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndexAll();
+        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndex();
         HashFilter filter = HashFilter::create(*leafIter, data);
 
         CPPUNIT_ASSERT(!filter.valid(indexIter));
@@ -447,7 +447,7 @@ TestIndexFilter::testAttributeHashFilter()
         CPPUNIT_ASSERT(!indexIter);
         ++leafIter;
 
-        indexIter = leafIter->beginIndexAll();
+        indexIter = leafIter->beginIndex();
         HashFilter filter2 = HashFilter::create(*leafIter, data);
         CPPUNIT_ASSERT(filter2.valid(indexIter));
         ++indexIter;
@@ -461,7 +461,7 @@ TestIndexFilter::testAttributeHashFilter()
 
         PointDataTree::LeafCIter leafIter = tree.cbeginLeaf();
 
-        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndexAll();
+        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndex();
         HashFilter filter = HashFilter::create(*leafIter, data);
 
         CPPUNIT_ASSERT(filter.valid(indexIter));
@@ -471,7 +471,7 @@ TestIndexFilter::testAttributeHashFilter()
         CPPUNIT_ASSERT(!indexIter);
         ++leafIter;
 
-        indexIter = leafIter->beginIndexAll();
+        indexIter = leafIter->beginIndex();
         HashFilter filter2 = HashFilter::create(*leafIter, data);
         CPPUNIT_ASSERT(!filter2.valid(indexIter));
         ++indexIter;

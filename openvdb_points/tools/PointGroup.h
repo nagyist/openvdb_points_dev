@@ -154,7 +154,7 @@ struct CopyGroupOp {
             GroupHandle sourceGroup = leaf->groupHandle(mSourceIndex);
             GroupWriteHandle targetGroup = leaf->groupWriteHandle(mTargetIndex);
 
-            for (IndexIter iter = leaf->beginIndexAll(); iter; ++iter) {
+            for (IndexIter iter = leaf->beginIndex(); iter; ++iter) {
                 const bool groupOn = sourceGroup.get(*iter);
                 targetGroup.set(*iter, groupOn);
             }
@@ -295,8 +295,8 @@ struct SetGroupByFilterOp
                 }
             }
             else {
-                IndexIter iter = leaf->beginIndexOn();
-                FilterIndexIter<IndexIter, FilterT> filterIndexIter(iter, filter);
+                typename LeafNodeT::IndexOnIter iter = leaf->beginIndexOn();
+                FilterIndexIter<typename LeafNodeT::IndexOnIter, FilterT> filterIndexIter(iter, filter);
 
                 for (; filterIndexIter; ++filterIndexIter) {
                     group.set(*filterIndexIter, true);
