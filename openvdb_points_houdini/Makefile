@@ -193,6 +193,7 @@ LIBHOUDINI_INCLUDE_NAMES := \
 	houdini/SOP_NodeVDBPoints.h \
 #
 HOUDINI_SOP_SRC_NAMES := \
+	houdini/GEO_OpenVDB_Points.cc \
 	houdini/GR_PrimVDBPoints.cc \
 	houdini/SOP_OpenVDB_Points.cc \
 	houdini/SOP_OpenVDB_Points_Group.cc \
