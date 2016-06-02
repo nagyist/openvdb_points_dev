@@ -195,6 +195,7 @@ LIBHOUDINI_INCLUDE_NAMES := \
 HOUDINI_SOP_SRC_NAMES := \
 	houdini/GEO_OpenVDB_Points.cc \
 	houdini/GR_PrimVDBPoints.cc \
+	houdini/SHOP_OpenVDB_Points.cc \
 	houdini/SOP_OpenVDB_Points.cc \
 	houdini/SOP_OpenVDB_Points_Group.cc \
 	houdini/SOP_OpenVDB_Points_Load.cc \
