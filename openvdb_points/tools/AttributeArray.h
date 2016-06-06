@@ -536,6 +536,43 @@ private:
 ////////////////////////////////////////
 
 
+template<typename ValueType_, typename Codec_ = NullAttributeCodec<ValueType_> >
+class MultiTypedAttributeArray : public TypedAttributeArray<ValueType_, Codec_>
+{
+public:
+    typedef boost::shared_ptr<MultiTypedAttributeArray>          Ptr;
+    typedef boost::shared_ptr<const MultiTypedAttributeArray>    ConstPtr;
+
+    typedef ValueType_                  ValueType;
+    typedef Codec_                      Codec;
+    typedef typename Codec::StorageType StorageType;
+
+    //////////
+
+    /// Default constructor, always constructs a uniform attribute.
+    explicit MultiTypedAttributeArray(size_t n = 1, size_t stride = 1,
+        const ValueType& uniformValue = zeroVal<ValueType>());
+    /// Deep copy constructor (optionally decompress during copy).
+    MultiTypedAttributeArray(const MultiTypedAttributeArray&, bool uncompress = false);
+    /// Deep copy assignment operator.
+    MultiTypedAttributeArray& operator=(const MultiTypedAttributeArray&);
+
+    virtual ~MultiTypedAttributeArray() { this->deallocate(); }
+
+    /// Return the name of this attribute's type (includes codec)
+    static const NamePair& attributeType();
+    /// Return the name of this attribute's type.
+    virtual const NamePair& type() const { return attributeType(); }
+
+private:
+    static tbb::atomic<const NamePair*> sTypeName;
+    Index mStride;
+}; // class MultiTypedAttributeArray
+
+
+////////////////////////////////////////
+
+
 /// AttributeHandles provide access to specific TypedAttributeArray methods without needing
 /// to know the compression codec, however these methods also incur the cost of a function pointer
 template <typename T>
@@ -1451,6 +1488,50 @@ TypedAttributeArray<ValueType_, Codec_>::isEqual(const AttributeArray& other) co
     while (n && math::isExactlyEqual(*target++, *source++)) --n;
     return n == 0;
 }
+
+
+////////////////////////////////////////
+
+
+template<typename ValueType_, typename Codec_>
+MultiTypedAttributeArray<ValueType_, Codec_>::MultiTypedAttributeArray(
+    size_t n, size_t stride, const ValueType& uniformValue)
+    : TypedAttributeArray<ValueType, Codec>(n*stride, uniformValue)
+    , mStride(stride)
+{
+}
+
+
+template<typename ValueType_, typename Codec_>
+MultiTypedAttributeArray<ValueType_, Codec_>::MultiTypedAttributeArray(const MultiTypedAttributeArray& rhs, bool uncompress)
+    : TypedAttributeArray<ValueType, Codec>(rhs, uncompress)
+    , mStride(rhs.mStride)
+{
+}
+
+
+template<typename ValueType_, typename Codec_>
+typename MultiTypedAttributeArray<ValueType_, Codec_>::MultiTypedAttributeArray&
+MultiTypedAttributeArray<ValueType_, Codec_>::operator=(const MultiTypedAttributeArray& rhs)
+{
+    TypedAttributeArray<ValueType, Codec>::operator=(rhs);
+}
+
+
+template<typename ValueType_, typename Codec_>
+inline const NamePair&
+MultiTypedAttributeArray<ValueType_, Codec_>::attributeType()
+{
+    if (sTypeName == NULL) {
+        const NamePair& type = TypedAttributeArray<ValueType, Codec>::attributeType();
+        std::ostringstream ostr2;
+        ostr2 << type.second << "_multi";
+        NamePair* s = new NamePair(type.first, ostr2.str());
+        if (sTypeName.compare_and_swap(s, NULL) != NULL) delete s;
+    }
+    return *sTypeName;
+}
+
 
 ////////////////////////////////////////
 
