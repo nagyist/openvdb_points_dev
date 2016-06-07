@@ -112,6 +112,7 @@ public:
     CPPUNIT_TEST(testFixedPointConversion);
     CPPUNIT_TEST(testCompression);
     CPPUNIT_TEST(testAttributeArray);
+    CPPUNIT_TEST(testMultiAttributeArray);
     CPPUNIT_TEST(testAttributeHandle);
     CPPUNIT_TEST(testDelayedLoad);
     CPPUNIT_TEST(testProfile);
@@ -121,6 +122,7 @@ public:
     void testFixedPointConversion();
     void testCompression();
     void testAttributeArray();
+    void testMultiAttributeArray();
     void testAttributeHandle();
     void testDelayedLoad();
     void testProfile();
@@ -730,6 +732,20 @@ TestAttributeArray::testAttributeArray()
         CPPUNIT_ASSERT_NO_THROW(TypedAttributeArray<float>::cast(*constArray));
         CPPUNIT_ASSERT_THROW(TypedAttributeArray<int>::cast(*constArray), TypeError);
     }
+}
+
+
+void
+TestAttributeArray::testMultiAttributeArray()
+{
+    using namespace openvdb;
+    using namespace openvdb::tools;
+
+    typedef TypedAttributeArray<float>                  AttributeF;
+    typedef MultiTypedAttributeArray<float>             MultiAttributeF;
+
+    AttributeF::registerType();
+    MultiAttributeF::registerType();
 }
 
 

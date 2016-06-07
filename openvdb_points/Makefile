@@ -264,17 +264,17 @@ UNITTEST_INCLUDE_NAMES := \
 
 UNITTEST_SRC_NAMES := \
     unittest/main.cc \
-    unittest/TestIndexFilter.cc \
-    unittest/TestIndexIterator.cc \
     unittest/TestAttributeArray.cc \
-    unittest/TestAttributeSet.cc \
-    unittest/TestAttributeGroup.cc \
-    unittest/TestPointAttribute.cc \
-    unittest/TestPointConversion.cc \
-    unittest/TestPointCount.cc \
-    unittest/TestPointDataLeaf.cc \
-    unittest/TestPointGroup.cc \
-    unittest/TestPointLoad.cc \
+    # unittest/TestIndexFilter.cc \
+    # unittest/TestIndexIterator.cc \
+    # unittest/TestAttributeSet.cc \
+    # unittest/TestAttributeGroup.cc \
+    # unittest/TestPointAttribute.cc \
+    # unittest/TestPointConversion.cc \
+    # unittest/TestPointCount.cc \
+    # unittest/TestPointDataLeaf.cc \
+    # unittest/TestPointGroup.cc \
+    # unittest/TestPointLoad.cc \
 #
 
 DOC_FILES := 	doc/doc.txt \
