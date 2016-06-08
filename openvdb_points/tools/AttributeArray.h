@@ -239,16 +239,14 @@ public:
 
     template <typename> friend class AttributeHandle;
 
-    typedef Ptr (*FactoryMethod)(size_t);
+    typedef Ptr (*FactoryMethod)(size_t, size_t);
 
     AttributeArray() : mCompressedBytes(0), mFlags(0) {}
     virtual ~AttributeArray() {}
 
     /// Return a copy of this attribute.
-    virtual AttributeArray::Ptr copy() const = 0;
-
-    /// Return an uncompressed copy of this attribute (will return a copy if not compressed).
-    virtual AttributeArray::Ptr copyUncompressed() const = 0;
+    /// @param decompress  Decompress the data in the array if compressed.
+    virtual AttributeArray::Ptr copy(const bool decompress = false) const = 0;
 
     /// Return the length of this array.
     virtual size_t size() const = 0;
@@ -258,6 +256,9 @@ public:
 
     /// Create a new attribute array of the given (registered) type and length.
     static Ptr create(const NamePair& type, size_t length);
+    /// Create a new attribute array of the given (registered) type, length and stride
+    static Ptr create(const NamePair& type, size_t length, size_t stride);
+
     /// Return @c true if the given attribute type name is registered.
     static bool isRegistered(const NamePair& type);
     /// Clear the attribute type registry.
@@ -364,6 +365,8 @@ struct AttributeArray::Accessor : public AttributeArray::AccessorBase
 {
     typedef T (*GetterPtr)(const AttributeArray* array, const Index n);
     typedef void (*SetterPtr)(AttributeArray* array, const Index n, const T& value);
+    typedef T (*StridedGetterPtr)(const AttributeArray* array, const Index n, const Index stride);
+    typedef void (*StridedSetterPtr)(AttributeArray* array, const Index n, const Index stride, const T& value);
     typedef void (*ValuePtr)(AttributeArray* array, const T& value);
 
     Accessor(GetterPtr getter, SetterPtr setter, ValuePtr collapser, ValuePtr filler) :
@@ -371,6 +374,8 @@ struct AttributeArray::Accessor : public AttributeArray::AccessorBase
 
     GetterPtr mGetter;
     SetterPtr mSetter;
+    StridedGetterPtr mStridedGetter;
+    StridedSetterPtr mStridedSetter;
     ValuePtr  mCollapser;
     ValuePtr  mFiller;
 }; // struct AttributeArray::Accessor
@@ -397,20 +402,20 @@ public:
     explicit TypedAttributeArray(size_t n = 1,
         const ValueType& uniformValue = zeroVal<ValueType>());
     /// Deep copy constructor (optionally decompress during copy).
-    TypedAttributeArray(const TypedAttributeArray&, bool uncompress = false);
+    TypedAttributeArray(const TypedAttributeArray&, bool decompress = false);
     /// Deep copy assignment operator.
     TypedAttributeArray& operator=(const TypedAttributeArray&);
 
     virtual ~TypedAttributeArray() { this->deallocate(); }
 
     /// Return a copy of this attribute.
-    virtual AttributeArray::Ptr copy() const;
-
-    /// Return an uncompressed copy of this attribute (will just return a copy if not compressed).
-    virtual AttributeArray::Ptr copyUncompressed() const;
+    /// @param decompress  Decompress the data in the array if compressed.
+    virtual AttributeArray::Ptr copy(const bool decompress = false) const;
 
     /// Return a new attribute array of the given length @a n with uniform value zero.
     static Ptr create(size_t n);
+    /// Return a new attribute array of the given length @a n with uniform value zero and stride of @a stride.
+    static Ptr create(size_t n, size_t stride);
 
     /// Cast an AttributeArray to TypedAttributeArray<T>
     static TypedAttributeArray& cast(AttributeArray& attributeArray);
@@ -420,8 +425,9 @@ public:
 
     /// Return the name of this attribute's type (includes codec)
     static const NamePair& attributeType();
+
     /// Return the name of this attribute's type.
-    virtual const NamePair& type() const { return attributeType(); }
+    virtual const NamePair& type() const { return attributeType(); };
 
     /// Return @c true if this attribute type is registered.
     static bool isRegistered();
@@ -506,6 +512,9 @@ public:
 protected:
     virtual AccessorBasePtr getAccessor() const;
 
+    /// Copy the buffer from this array and decompress during copy if requested.
+    void copyBuffer(const TypedAttributeArray& array, bool decompress);
+
 private:
     /// Load data from memory-mapped file.
     inline void doLoad() const;
@@ -523,7 +532,7 @@ private:
     void deallocate();
 
     /// Helper function for use with registerType()
-    static AttributeArray::Ptr factory(size_t n) { return TypedAttributeArray::create(n); }
+    static AttributeArray::Ptr factory(size_t n, size_t stride);
 
     static tbb::atomic<const NamePair*> sTypeName;
     StorageType*    mData;
@@ -536,7 +545,7 @@ private:
 ////////////////////////////////////////
 
 
-template<typename ValueType_, typename Codec_ = NullAttributeCodec<ValueType_> >
+template<typename ValueType_, typename Codec_ = NullAttributeCodec<ValueType_>, bool Sequential = true>
 class MultiTypedAttributeArray : public TypedAttributeArray<ValueType_, Codec_>
 {
 public:
@@ -553,16 +562,32 @@ public:
     explicit MultiTypedAttributeArray(size_t n = 1, size_t stride = 1,
         const ValueType& uniformValue = zeroVal<ValueType>());
     /// Deep copy constructor (optionally decompress during copy).
-    MultiTypedAttributeArray(const MultiTypedAttributeArray&, bool uncompress = false);
+    MultiTypedAttributeArray(const MultiTypedAttributeArray&, bool decompress = false);
     /// Deep copy assignment operator.
     MultiTypedAttributeArray& operator=(const MultiTypedAttributeArray&);
 
     virtual ~MultiTypedAttributeArray() { this->deallocate(); }
 
+    /// Return a copy of this attribute.
+    /// @param decompress  Decompress the data in the array if compressed.
+    virtual AttributeArray::Ptr copy(const bool decompress = false) const;
+
+    /// Cast an AttributeArray to MultiTypedAttributeArray<T>
+    static MultiTypedAttributeArray& cast(AttributeArray& attributeArray);
+
+    /// Cast an AttributeArray to MultiTypedAttributeArray<T>
+    static const MultiTypedAttributeArray& cast(const AttributeArray& attributeArray);
+
     /// Return the name of this attribute's type (includes codec)
     static const NamePair& attributeType();
+
     /// Return the name of this attribute's type.
-    virtual const NamePair& type() const { return attributeType(); }
+    virtual const NamePair& type() const { return attributeType(); };
+
+    /// Read attribute metadata and buffers from a stream.
+    virtual void read(std::istream&);
+    /// Write attribute metadata and buffers to a stream.
+    virtual void write(std::ostream&) const;
 
 private:
     static tbb::atomic<const NamePair*> sTypeName;
@@ -735,44 +760,14 @@ TypedAttributeArray<ValueType_, Codec_>::TypedAttributeArray(
 
 
 template<typename ValueType_, typename Codec_>
-TypedAttributeArray<ValueType_, Codec_>::TypedAttributeArray(const TypedAttributeArray& rhs, bool uncompress)
+TypedAttributeArray<ValueType_, Codec_>::TypedAttributeArray(const TypedAttributeArray& rhs, bool decompress)
     : AttributeArray(rhs)
     , mData(NULL)
     , mSize(rhs.mSize)
     , mIsUniform(rhs.mIsUniform)
     , mMutex()
 {
-    using attribute_compression::decompress;
-    using attribute_compression::uncompressedSize;
-
-    // disable uncompress if data is not compressed
-
-    if (!this->isCompressed())  uncompress = false;
-
-    if (mIsUniform) {
-        this->allocate(1);
-        mData[0] = rhs.mData[0];
-    } else if (this->isOutOfCore()) {
-        // do nothing
-    } else if (this->isCompressed()) {
-        char* buffer = 0;
-        if (uncompress) {
-            rhs.doLoad();
-            const char* charBuffer = reinterpret_cast<char*>(rhs.mData);
-            buffer = decompress(charBuffer, uncompressedSize(charBuffer));
-        }
-        if (buffer)         mCompressedBytes = 0;
-        else {
-            // decompression wasn't requested or failed so deep copy instead
-            buffer = new char[mCompressedBytes];
-            memcpy(buffer, rhs.mData, mCompressedBytes);
-        }
-        assert(buffer);
-        mData = reinterpret_cast<StorageType*>(buffer);
-    } else {
-        this->allocate(mSize);
-        memcpy(mData, rhs.mData, mSize * sizeof(StorageType));
-    }
+    copyBuffer(rhs, decompress);
 }
 
 
@@ -805,6 +800,44 @@ TypedAttributeArray<ValueType_, Codec_>::operator=(const TypedAttributeArray& rh
             this->allocate(mSize);
             memcpy(mData, rhs.mData, mSize * sizeof(StorageType));
         }
+    }
+}
+
+
+template<typename ValueType_, typename Codec_>
+void
+TypedAttributeArray<ValueType_, Codec_>::copyBuffer(const TypedAttributeArray& rhs, bool uncompress)
+{
+    using attribute_compression::decompress;
+    using attribute_compression::uncompressedSize;
+
+    // disable uncompress if data is not compressed
+
+    if (!this->isCompressed())  uncompress = false;
+
+    if (mIsUniform) {
+        this->allocate(1);
+        mData[0] = rhs.mData[0];
+    } else if (this->isOutOfCore()) {
+        // do nothing
+    } else if (this->isCompressed()) {
+        char* buffer = 0;
+        if (uncompress) {
+            rhs.doLoad();
+            const char* charBuffer = reinterpret_cast<char*>(rhs.mData);
+            buffer = decompress(charBuffer, uncompressedSize(charBuffer));
+        }
+        if (buffer)         mCompressedBytes = 0;
+        else {
+            // decompression wasn't requested or failed so deep copy instead
+            buffer = new char[mCompressedBytes];
+            memcpy(buffer, rhs.mData, mCompressedBytes);
+        }
+        assert(buffer);
+        mData = reinterpret_cast<StorageType*>(buffer);
+    } else {
+        this->allocate(mSize);
+        memcpy(mData, rhs.mData, mSize * sizeof(StorageType));
     }
 }
 
@@ -855,6 +888,20 @@ TypedAttributeArray<ValueType_, Codec_>::create(size_t n)
     return Ptr(new TypedAttributeArray(n));
 }
 
+
+template<typename ValueType_, typename Codec_>
+inline typename TypedAttributeArray<ValueType_, Codec_>::Ptr
+TypedAttributeArray<ValueType_, Codec_>::create(size_t n, size_t stride)
+{
+    // stride expected to be 1 for TypedAttributeArray
+
+    assert(stride == 1);
+    (void) stride; // unused variable
+
+    return TypedAttributeArray::create(n);
+}
+
+
 template<typename ValueType_, typename Codec_>
 inline TypedAttributeArray<ValueType_, Codec_>&
 TypedAttributeArray<ValueType_, Codec_>::cast(AttributeArray& attributeArray)
@@ -877,17 +924,9 @@ TypedAttributeArray<ValueType_, Codec_>::cast(const AttributeArray& attributeArr
 
 template<typename ValueType_, typename Codec_>
 AttributeArray::Ptr
-TypedAttributeArray<ValueType_, Codec_>::copy() const
+TypedAttributeArray<ValueType_, Codec_>::copy(const bool decompress) const
 {
-    return AttributeArray::Ptr(new TypedAttributeArray<ValueType, Codec>(*this));
-}
-
-
-template<typename ValueType_, typename Codec_>
-AttributeArray::Ptr
-TypedAttributeArray<ValueType_, Codec_>::copyUncompressed() const
-{
-    return AttributeArray::Ptr(new TypedAttributeArray<ValueType, Codec>(*this, /*decompress = */true));
+    return AttributeArray::Ptr(new TypedAttributeArray<ValueType, Codec>(*this, decompress));
 }
 
 
@@ -1493,8 +1532,8 @@ TypedAttributeArray<ValueType_, Codec_>::isEqual(const AttributeArray& other) co
 ////////////////////////////////////////
 
 
-template<typename ValueType_, typename Codec_>
-MultiTypedAttributeArray<ValueType_, Codec_>::MultiTypedAttributeArray(
+template<typename ValueType_, typename Codec_, bool Sequential>
+MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::MultiTypedAttributeArray(
     size_t n, size_t stride, const ValueType& uniformValue)
     : TypedAttributeArray<ValueType, Codec>(n*stride, uniformValue)
     , mStride(stride)
@@ -1502,34 +1541,105 @@ MultiTypedAttributeArray<ValueType_, Codec_>::MultiTypedAttributeArray(
 }
 
 
-template<typename ValueType_, typename Codec_>
-MultiTypedAttributeArray<ValueType_, Codec_>::MultiTypedAttributeArray(const MultiTypedAttributeArray& rhs, bool uncompress)
-    : TypedAttributeArray<ValueType, Codec>(rhs, uncompress)
+template<typename ValueType_, typename Codec_, bool Sequential>
+MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::MultiTypedAttributeArray(const MultiTypedAttributeArray& rhs, bool decompress)
+    : TypedAttributeArray<ValueType, Codec>(rhs, decompress)
     , mStride(rhs.mStride)
 {
+    this->copyBuffer(rhs, decompress);
 }
 
 
-template<typename ValueType_, typename Codec_>
-typename MultiTypedAttributeArray<ValueType_, Codec_>::MultiTypedAttributeArray&
-MultiTypedAttributeArray<ValueType_, Codec_>::operator=(const MultiTypedAttributeArray& rhs)
+template<typename ValueType_, typename Codec_, bool Sequential>
+typename MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::MultiTypedAttributeArray&
+MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::operator=(const MultiTypedAttributeArray& rhs)
 {
     TypedAttributeArray<ValueType, Codec>::operator=(rhs);
+
+    mStride = rhs.mStride;
 }
 
 
-template<typename ValueType_, typename Codec_>
+template<typename ValueType_, typename Codec_, bool Sequential>
 inline const NamePair&
-MultiTypedAttributeArray<ValueType_, Codec_>::attributeType()
+MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::attributeType()
 {
     if (sTypeName == NULL) {
         const NamePair& type = TypedAttributeArray<ValueType, Codec>::attributeType();
         std::ostringstream ostr2;
-        ostr2 << type.second << "_multi";
+        if (Sequential)     ostr2 << type.second << "_array_aos";
+        else                ostr2 << type.second << "_array_soa";
         NamePair* s = new NamePair(type.first, ostr2.str());
         if (sTypeName.compare_and_swap(s, NULL) != NULL) delete s;
     }
     return *sTypeName;
+}
+
+
+template<typename ValueType_, typename Codec_, bool Sequential>
+AttributeArray::Ptr
+MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::copy(const bool decompress) const
+{
+    return AttributeArray::Ptr(new MultiTypedAttributeArray<ValueType, Codec, Sequential>(*this, decompress));
+}
+
+
+template<typename ValueType_, typename Codec_, bool Sequential>
+inline MultiTypedAttributeArray<ValueType_, Codec_, Sequential>&
+MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::cast(AttributeArray& attributeArray)
+{
+    if (!attributeArray.isType<MultiTypedAttributeArray>()) {
+        OPENVDB_THROW(TypeError, "Invalid Attribute Type");
+    }
+    return static_cast<MultiTypedAttributeArray&>(attributeArray);
+}
+
+
+template<typename ValueType_, typename Codec_, bool Sequential>
+inline const MultiTypedAttributeArray<ValueType_, Codec_, Sequential>&
+MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::cast(const AttributeArray& attributeArray)
+{
+    if (!attributeArray.isType<MultiTypedAttributeArray>()) {
+        OPENVDB_THROW(TypeError, "Invalid Attribute Type");
+    }
+    return static_cast<const MultiTypedAttributeArray&>(attributeArray);
+}
+
+
+template<typename ValueType_, typename Codec_, bool Sequential>
+void
+MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::read(std::istream& is)
+{
+    TypedAttributeArray<ValueType_, Codec_>::read(is);
+
+    Index64 stride = Index64(0);
+    is.read(reinterpret_cast<char*>(&stride), sizeof(Index64));
+    mStride = stride;
+}
+
+
+template<typename ValueType_, typename Codec_, bool Sequential>
+void
+MultiTypedAttributeArray<ValueType_, Codec_, Sequential>::write(std::ostream& os) const
+{
+    TypedAttributeArray<ValueType_, Codec_>::write(os);
+
+    Index64 stride(mStride);
+    os.write(reinterpret_cast<const char*>(&stride), sizeof(Index64));
+}
+
+
+////////////////////////////////////////
+
+
+template<typename ValueType_, typename Codec_>
+AttributeArray::Ptr
+TypedAttributeArray<ValueType_, Codec_>::factory(size_t n, size_t stride) {
+    if (stride > 1) {
+        // if more than one array element, create a MultiTypedAttributeArray
+        return MultiTypedAttributeArray<ValueType_, Codec_>::create(n, stride);
+    }
+    return TypedAttributeArray<ValueType_, Codec_>::create(n);
 }
 
 
@@ -1558,7 +1668,7 @@ AttributeHandle<T>::AttributeHandle(const AttributeArray& array, const bool pres
     if (array.isCompressed())
     {
         if (preserveCompression) {
-            mLocalArray = array.copyUncompressed();
+            mLocalArray = array.copy(/*decompress=*/ true);
             mLocalArray->decompress();
             mArray = mLocalArray.get();
         }

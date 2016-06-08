@@ -91,6 +91,26 @@ initialize()
 
     TypedAttributeArray<Vec3<float>, UnitVecAttributeCodec>::registerType();
 
+    // multi attribute (sequential)
+
+    MultiTypedAttributeArray<bool, NullAttributeCodec<bool>, true>::registerType();
+    MultiTypedAttributeArray<int16_t, NullAttributeCodec<int16_t>, true>::registerType();
+    MultiTypedAttributeArray<int32_t, NullAttributeCodec<int32_t>, true>::registerType();
+    MultiTypedAttributeArray<int64_t, NullAttributeCodec<int64_t>, true>::registerType();
+    MultiTypedAttributeArray<half, NullAttributeCodec<half>, true>::registerType();
+    MultiTypedAttributeArray<float, NullAttributeCodec<float>, true>::registerType();
+    MultiTypedAttributeArray<double, NullAttributeCodec<double>, true>::registerType();
+
+    // multi attribute (interleaved)
+
+    MultiTypedAttributeArray<bool, NullAttributeCodec<bool>, false>::registerType();
+    MultiTypedAttributeArray<int16_t, NullAttributeCodec<int16_t>, false>::registerType();
+    MultiTypedAttributeArray<int32_t, NullAttributeCodec<int32_t>, false>::registerType();
+    MultiTypedAttributeArray<int64_t, NullAttributeCodec<int64_t>, false>::registerType();
+    MultiTypedAttributeArray<half, NullAttributeCodec<half>, false>::registerType();
+    MultiTypedAttributeArray<float, NullAttributeCodec<float>, false>::registerType();
+    MultiTypedAttributeArray<double, NullAttributeCodec<double>, false>::registerType();
+
     // Register types associated with point data grids.
     Metadata::registerType(typeNameAsString<PointDataIndex32>(), Int32Metadata::createMetadata);
     Metadata::registerType(typeNameAsString<PointDataIndex64>(), Int64Metadata::createMetadata);

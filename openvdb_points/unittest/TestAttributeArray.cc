@@ -601,7 +601,7 @@ TestAttributeArray::testAttributeArray()
             CPPUNIT_ASSERT(attr.isCompressed());
 #endif
 
-            AttributeArray::Ptr attrCopy = attr.copyUncompressed();
+            AttributeArray::Ptr attrCopy = attr.copy(/*decompress=*/true);
             AttributeArrayI& attrB(AttributeArrayI::cast(*attrCopy));
 
             CPPUNIT_ASSERT(!attrB.isCompressed());
