@@ -41,6 +41,7 @@
 
 #include <openvdb/openvdb.h>
 
+#include <openvdb_points/tools/AttributeArrayString.h>
 #include <openvdb_points/tools/AttributeSet.h>
 #include <openvdb_points/tools/AttributeGroup.h>
 #include <openvdb_points/tools/PointDataGrid.h>
@@ -59,13 +60,15 @@ namespace tools {
 /// @param hidden        mark attribute as hidden
 /// @param transient     mark attribute as transient
 /// @param group         mark attribute as group
+/// @param string        mark attribute as string
 template <typename PointDataTree>
 inline void appendAttribute(PointDataTree& tree,
                             const AttributeSet::Util::NameAndType& newAttribute,
                             Metadata::Ptr defaultValue = Metadata::Ptr(),
                             const bool hidden = false,
                             const bool transient = false,
-                            const bool group = false);
+                            const bool group = false,
+                            const bool string = false);
 
 /// @brief Drops attributes from the VDB tree.
 ///
@@ -156,13 +159,15 @@ struct AppendAttributeOp {
                         AttributeSet::DescriptorPtr& descriptor,
                         const bool hidden = false,
                         const bool transient = false,
-                        const bool group = false)
+                        const bool group = false,
+                        const bool string = false)
         : mTree(tree)
         , mNewAttribute(newAttribute)
         , mDescriptor(descriptor)
         , mHidden(hidden)
         , mTransient(transient)
-        , mGroup(group) { }
+        , mGroup(group)
+        , mString(string) { }
 
     void operator()(const LeafRangeT& range) const {
 
@@ -174,6 +179,7 @@ struct AppendAttributeOp {
 
             if (mHidden)      attribute->setHidden(true);
             if (mTransient)   attribute->setTransient(true);
+            if (mString)      attribute->setString(true);
 
             if (mGroup) {
                 GroupAttributeArray::cast(*attribute).setGroup(true);
@@ -189,6 +195,7 @@ struct AppendAttributeOp {
     const bool                      mHidden;
     const bool                      mTransient;
     const bool                      mGroup;
+    const bool                      mString;
 }; // class AppendAttributeOp
 
 
@@ -291,7 +298,8 @@ template <typename PointDataTree>
 inline void appendAttribute(PointDataTree& tree,
                             const AttributeSet::Util::NameAndType& newAttribute,
                             Metadata::Ptr defaultValue,
-                            const bool hidden, const bool transient, const bool group)
+                            const bool hidden, const bool transient,
+                            const bool group, const bool string)
 {
     typedef AttributeSet::Util::NameAndTypeVec                    NameAndTypeVec;
     typedef AttributeSet::Descriptor                              Descriptor;
@@ -325,7 +333,7 @@ inline void appendAttribute(PointDataTree& tree,
 
     // insert attributes using the new descriptor
 
-    AppendAttributeOp<PointDataTree> append(tree, newAttribute, newDescriptor, hidden, transient, group);
+    AppendAttributeOp<PointDataTree> append(tree, newAttribute, newDescriptor, hidden, transient, group, string);
     tbb::parallel_for(typename tree::template LeafManager<PointDataTree>(tree).leafRange(), append);
 }
 

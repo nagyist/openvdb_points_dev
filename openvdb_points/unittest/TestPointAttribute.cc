@@ -239,26 +239,36 @@ TestPointAttribute::testAppendDrop()
         CPPUNIT_ASSERT_EQUAL(attributeSet.descriptor().size(), size_t(2));
     }
 
-    { // append attributes marked as hidden, transient and group
+    { // append attributes marked as hidden, transient, group and string
         appendAttribute(tree, Descriptor::NameAndType("testHidden", AttributeF::attributeType()), Metadata::Ptr(), true, false, false);
         appendAttribute(tree, Descriptor::NameAndType("testTransient", AttributeF::attributeType()), Metadata::Ptr(), false, true, false);
         appendAttribute(tree, Descriptor::NameAndType("testGroup", GroupAttributeArray::attributeType()), Metadata::Ptr(), false, false, true);
+        appendAttribute(tree, Descriptor::NameAndType("testString", StringAttributeArray::attributeType()), Metadata::Ptr(), false, false, false, true);
 
         const AttributeArray& arrayHidden = leafIter->attributeArray("testHidden");
         const AttributeArray& arrayTransient = leafIter->attributeArray("testTransient");
         const AttributeArray& arrayGroup = leafIter->attributeArray("testGroup");
+        const AttributeArray& arrayString = leafIter->attributeArray("testString");
 
         CPPUNIT_ASSERT(arrayHidden.isHidden());
         CPPUNIT_ASSERT(!arrayTransient.isHidden());
         CPPUNIT_ASSERT(!arrayGroup.isHidden());
+        CPPUNIT_ASSERT(!arrayString.isHidden());
 
         CPPUNIT_ASSERT(!arrayHidden.isTransient());
         CPPUNIT_ASSERT(arrayTransient.isTransient());
         CPPUNIT_ASSERT(!arrayGroup.isTransient());
+        CPPUNIT_ASSERT(!arrayString.isTransient());
 
         CPPUNIT_ASSERT(!GroupAttributeArray::isGroup(arrayHidden));
         CPPUNIT_ASSERT(!GroupAttributeArray::isGroup(arrayTransient));
         CPPUNIT_ASSERT(GroupAttributeArray::isGroup(arrayGroup));
+        CPPUNIT_ASSERT(!GroupAttributeArray::isGroup(arrayString));
+
+        CPPUNIT_ASSERT(!arrayHidden.isString());
+        CPPUNIT_ASSERT(!arrayTransient.isString());
+        CPPUNIT_ASSERT(!arrayGroup.isString());
+        CPPUNIT_ASSERT(arrayString.isString());
     }
 }
 
