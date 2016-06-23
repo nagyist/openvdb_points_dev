@@ -358,6 +358,18 @@ AttributeArray::setHidden(bool state)
 }
 
 
+void
+AttributeArray::setString(bool state)
+{
+    if (!hasValueType<StringType>()) {
+        OPENVDB_THROW(TypeError, "Invalid Attribute Type for String");
+    }
+
+    if (state)  mFlags |= Int16(STRING);
+    else        mFlags &= ~Int16(STRING);
+}
+
+
 IndexIter
 AttributeArray::beginIndex() const
 {

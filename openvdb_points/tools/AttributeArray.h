@@ -66,6 +66,8 @@ namespace OPENVDB_VERSION_NAME {
 // Add new typedef for a Name pair
 typedef std::pair<Name, Name> NamePair;
 
+typedef uint32_t StringType;
+
 namespace tools {
 
 
@@ -223,7 +225,7 @@ protected:
 
 public:
     enum Flag { TRANSIENT = 0x1, HIDDEN = 0x2, GROUP=0x4, WRITEUNIFORM=0x8,
-                WRITEMEMCOMPRESS=0x10, WRITEDISKCOMPRESS=0x20, OUTOFCORE=0x40 };
+                WRITEMEMCOMPRESS=0x10, WRITEDISKCOMPRESS=0x20, OUTOFCORE=0x40, STRING=0x80 };
 
 #ifndef OPENVDB_2_ABI_COMPATIBLE
     struct FileInfo
@@ -309,6 +311,13 @@ public:
     void setTransient(bool state);
     /// Return @c true if this attribute is not serialized during stream output.
     bool isTransient() const { return bool(mFlags & TRANSIENT); }
+
+    /// @brief Specify whether this attribute is a string attribute.
+    /// @note  Attributes must be of StringType to be able to be set as string,
+    ///        attributes are not string by default.
+    void setString(bool state);
+    /// Return @c true if this attribute is a string attribute.
+    bool isString() const { return bool(mFlags & STRING); }
 
     /// @brief Retrieve the attribute array flags
     uint16_t flags() const { return mFlags; }
