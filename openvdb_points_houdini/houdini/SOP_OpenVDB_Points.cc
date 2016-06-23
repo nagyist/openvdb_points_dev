@@ -36,6 +36,7 @@
 
 
 #include <openvdb_points/openvdb.h>
+#include <openvdb_points/tools/AttributeArrayString.h>
 #include <openvdb_points/tools/PointDataGrid.h>
 #include <openvdb_points/tools/PointAttribute.h>
 #include <openvdb_points/tools/PointConversion.h>
@@ -97,6 +98,10 @@ attrTypeFromGAAttribute(GA_Attribute const * attribute, const int compression = 
     if (!attribute) {
         std::stringstream ss; ss << "Invalid attribute - " << attribute->getName();
         throw std::runtime_error(ss.str());
+    }
+
+    if (attribute->getAIFStringTuple()) {
+        return StringAttributeArray::attributeType();
     }
 
     const GA_AIFTuple* tupleAIF = attribute->getAIFTuple();
@@ -189,6 +194,10 @@ attrStringTypeFromGAAttribute(GA_Attribute const * attribute)
         throw std::runtime_error(ss.str());
     }
 
+    if (attribute->getAIFStringTuple()) {
+        return "string";
+    }
+
     const GA_AIFTuple* tupleAIF = attribute->getAIFTuple();
 
     if (!tupleAIF) {
@@ -249,6 +258,11 @@ defaultMetadataFromGAAttribute(GA_Attribute const * attribute)
     if (!attribute) {
         std::stringstream ss; ss << "Invalid attribute - " << attribute->getName();
         throw std::runtime_error(ss.str());
+    }
+
+    // No default value for string attributes (just use an empty string)
+    if (attribute->getAIFStringTuple()) {
+        return Metadata::Ptr();
     }
 
     const GA_AIFTuple* tupleAIF = attribute->getAIFTuple();
@@ -338,6 +352,7 @@ struct AttributeInfo
 
 typedef std::vector<AttributeInfo> AttributeInfoVec;
 
+
 ///////////////////////////////////////
 
 
@@ -366,6 +381,16 @@ createPointDataGrid(const GU_Detail& ptGeo, const openvdb::NamePair& positionAtt
 
     PointIndexTree& indexTree = pointIndexGrid->tree();
     PointDataTree& tree = pointDataGrid->tree();
+    PointDataTree::LeafIter leafIter = tree.beginLeaf();
+
+    if (!leafIter)  return pointDataGrid;
+
+    // Swap with a new Descriptor to retrieve writeable Metadata
+
+    const AttributeSet::Descriptor& descriptor = leafIter->attributeSet().descriptor();
+    AttributeSet::Descriptor::Ptr newDescriptor(new AttributeSet::Descriptor(descriptor));
+    MetaMap& metadata = newDescriptor->getMetadata();
+    leafIter->resetDescriptor(newDescriptor);
 
     // Append (empty) groups to tree
 
@@ -426,18 +451,39 @@ createPointDataGrid(const GU_Detail& ptGeo, const openvdb::NamePair& positionAtt
 
         if (!gaAttribute)             continue;
 
+        const GA_AIFSharedStringTuple* sharedStringTupleAIF = gaAttribute->getAIFSharedStringTuple();
+        const bool isString = bool(sharedStringTupleAIF);
+
+        // Extract all the string values from the string table and insert them
+        // into the Descriptor Metadata
+        if (isString)
+        {
+            // Iterate over the strings in the table and insert them into the Metadata
+            StringMetaInserter inserter(metadata);
+            for (GA_AIFSharedStringTuple::iterator  it = sharedStringTupleAIF->begin(gaAttribute),
+                                                    itEnd = sharedStringTupleAIF->end(); !(it == itEnd); ++it) {
+
+                inserter.insert(Name(it.getString()));
+            }
+        }
+
         // Append the new attribute to the PointDataGrid
         AttributeSet::Util::NameAndType nameAndType(name,
                                 attrTypeFromGAAttribute(gaAttribute, compression));
         Metadata::Ptr defaultMetadata = defaultMetadataFromGAAttribute(gaAttribute);
 
-        appendAttribute(tree, nameAndType, defaultMetadata);
+        appendAttribute(tree, nameAndType, defaultMetadata,
+                        /*hidden*/false, /*transient*/false, /*group*/false, /*string*/isString);
 
         const openvdb::Name type = nameAndType.type.first;
 
         hvdbp::OffsetListPtr offsets;
 
-        if (type == "bool") {
+        if (isString) {
+            hvdbp::HoudiniReadAttribute<openvdb::Name> attribute(*gaAttribute, offsets);
+            populateAttribute(tree, indexTree, name, attribute);
+        }
+        else if (type == "bool") {
             hvdbp::HoudiniReadAttribute<bool> attribute(*gaAttribute, offsets);
             populateAttribute(tree, indexTree, name, attribute);
         }
