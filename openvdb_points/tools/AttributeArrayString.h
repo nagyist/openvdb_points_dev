@@ -51,6 +51,27 @@ namespace tools {
 ////////////////////////////////////////
 
 
+class StringMetaInserter
+{
+public:
+    StringMetaInserter(MetaMap& metadata);
+
+    /// Insert the string into the metadata
+    void insert(const Name& name);
+
+    /// Reset the cache from the metadata
+    void resetCache();
+
+private:
+    MetaMap& mMetadata;
+    std::vector<Index> mIndices;
+    std::vector<Name> mValues;
+}; // StringMetaInserter
+
+
+////////////////////////////////////////
+
+
 template <typename Codec_ = NullAttributeCodec<StringType> >
 class StringTypedAttributeArray : public TypedAttributeArray<StringType, Codec_>
 {
