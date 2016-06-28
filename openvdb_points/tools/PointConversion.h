@@ -222,12 +222,12 @@ template <typename T> struct ConversionTraits
     static T zero() { return T(0); }
     template <typename LeafT>
     static typename Handle::Ptr handleFromLeaf(LeafT& leaf, Index index) {
-        const AttributeArray& array = leaf.template constAttributeArray(index);
+        const AttributeArray& array = leaf.constAttributeArray(index);
         return Handle::create(array);
     }
     template <typename LeafT>
     static typename WriteHandle::Ptr writeHandleFromLeaf(LeafT& leaf, Index index) {
-        AttributeArray& array = leaf.template attributeArray(index);
+        AttributeArray& array = leaf.attributeArray(index);
         return WriteHandle::create(array);
     }
 }; // ConversionTraits
@@ -238,14 +238,14 @@ template <> struct ConversionTraits<openvdb::Name>
     static openvdb::Name zero() { return ""; }
     template <typename LeafT>
     static typename Handle::Ptr handleFromLeaf(LeafT& leaf, Index index) {
-        const AttributeArray& array = leaf.template constAttributeArray(index);
-        const AttributeSet::Descriptor& descriptor = leaf.template attributeSet().descriptor();
+        const AttributeArray& array = leaf.constAttributeArray(index);
+        const AttributeSet::Descriptor& descriptor = leaf.attributeSet().descriptor();
         return Handle::create(array, descriptor.getMetadata());
     }
     template <typename LeafT>
     static typename WriteHandle::Ptr writeHandleFromLeaf(LeafT& leaf, Index index) {
-        AttributeArray& array = leaf.template attributeArray(index);
-        const AttributeSet::Descriptor& descriptor = leaf.template attributeSet().descriptor();
+        AttributeArray& array = leaf.attributeArray(index);
+        const AttributeSet::Descriptor& descriptor = leaf.attributeSet().descriptor();
         return WriteHandle::create(array, descriptor.getMetadata());
     }
 }; // ConversionTraits<openvdb::Name>
