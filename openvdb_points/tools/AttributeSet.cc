@@ -312,25 +312,28 @@ AttributeSet::makeUnique(size_t pos)
 }
 
 
+template <typename AttributeType>
 AttributeArray::Ptr
-AttributeSet::appendAttribute(  const Descriptor::NameAndType& attribute,
+AttributeSet::appendAttribute(  const Name& name,
                                 Metadata::Ptr defaultValue)
 {
+    const Util::NameAndType nameAndType(name, AttributeType::attributeType());
+
     Descriptor::NameAndTypeVec vec;
-    vec.push_back(attribute);
+    vec.push_back(nameAndType);
 
     Descriptor::Ptr descriptor = mDescr->duplicateAppend(vec);
 
     // store the attribute default value in the descriptor metadata
-    if (defaultValue)   descriptor->setDefaultValue(attribute.name, *defaultValue);
+    if (defaultValue)   descriptor->setDefaultValue(name, *defaultValue);
 
-    return this->appendAttribute(attribute, *mDescr, descriptor);
+    return this->appendAttribute<AttributeType>(*mDescr, descriptor);
 }
 
 
+template <typename AttributeType>
 AttributeArray::Ptr
-AttributeSet::appendAttribute(const Descriptor::NameAndType& attribute,
-                              const Descriptor& expected, DescriptorPtr& replacement)
+AttributeSet::appendAttribute(const Descriptor& expected, DescriptorPtr& replacement)
 {
     // ensure the descriptor is as expected
     if (*mDescr != expected) {
@@ -349,7 +352,7 @@ AttributeSet::appendAttribute(const Descriptor::NameAndType& attribute,
 
     // append the new array
 
-    AttributeArray::Ptr array = AttributeArray::create(attribute.type, arrayLength);
+    AttributeArray::Ptr array = AttributeType::create(arrayLength);
 
     mAttrs.push_back(array);
 

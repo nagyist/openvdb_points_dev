@@ -182,14 +182,15 @@ public:
     void makeUnique(size_t pos);
 
     /// Append attribute @a attribute (simple method)
-    AttributeArray::Ptr appendAttribute(const Util::NameAndType& attribute,
+    template <typename AttributeType>
+    AttributeArray::Ptr appendAttribute(const Name& name,
                                         Metadata::Ptr defaultValue = Metadata::Ptr());
 
     /// Append attribute @a attribute (descriptor-sharing)
     /// Requires current descriptor to match @a expected
     /// On append, current descriptor is replaced with @a replacement
-    AttributeArray::Ptr appendAttribute(const Util::NameAndType& attribute,
-                                        const Descriptor& expected, DescriptorPtr& replacement);
+    template <typename AttributeType>
+    AttributeArray::Ptr appendAttribute(const Descriptor& expected, DescriptorPtr& replacement);
 
     /// Drop attributes with @a pos indices (simple method)
     /// Creates a new descriptor for this attribute set

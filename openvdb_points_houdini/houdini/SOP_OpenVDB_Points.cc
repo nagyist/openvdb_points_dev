@@ -333,6 +333,22 @@ defaultMetadataFromGAAttribute(GA_Attribute const * attribute)
     throw std::runtime_error(ss.str());
 }
 
+
+openvdb::Name
+appendAttributeFromHoudini(PointDataTree& tree, const openvdb::Name& name, const GA_Attribute* const attribute)
+{
+    // // Append the new attribute to the PointDataGrid
+    // AttributeSet::Util::NameAndType nameAndType(name,
+    //                         attrTypeFromGAAttribute(gaAttribute, compression));
+    // Metadata::Ptr defaultMetadata = defaultMetadataFromGAAttribute(gaAttribute);
+
+    // const openvdb::Name type = appendAttributeFromHoudini(tree, name, gaAttribute);
+
+    return "";
+
+}
+
+
 ////////////////////////////////////////
 
 
@@ -467,15 +483,16 @@ createPointDataGrid(const GU_Detail& ptGeo, const openvdb::NamePair& positionAtt
             }
         }
 
-        // Append the new attribute to the PointDataGrid
-        AttributeSet::Util::NameAndType nameAndType(name,
-                                attrTypeFromGAAttribute(gaAttribute, compression));
-        Metadata::Ptr defaultMetadata = defaultMetadataFromGAAttribute(gaAttribute);
+        // populateAttributeFromHoudini(tree, indexTree, name, gaAttribute);
 
-        appendAttribute(tree, nameAndType, defaultMetadata,
-                        /*hidden*/false, /*transient*/false, /*group*/false, /*string*/isString);
+        // // Append the new attribute to the PointDataGrid
+        // AttributeSet::Util::NameAndType nameAndType(name,
+        //                         attrTypeFromGAAttribute(gaAttribute, compression));
+        // Metadata::Ptr defaultMetadata = defaultMetadataFromGAAttribute(gaAttribute);
 
-        const openvdb::Name type = nameAndType.type.first;
+        const openvdb::Name type = appendAttributeFromHoudini(tree, name, gaAttribute);
+
+        //const openvdb::Name type = nameAndType.type.first;
 
         hvdbp::OffsetListPtr offsets;
 
