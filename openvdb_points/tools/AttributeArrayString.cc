@@ -100,7 +100,7 @@ void StringMetaInserter::insert(const Name& name)
 {
     // name already exists, so do nothing
 
-    if (std::find(mValues.begin(), mValues.end(), name) != mValues.end())  return;
+    if (std::binary_search(mValues.begin(), mValues.end(), name))  return;
 
     // find first unused index in the cache
 
@@ -116,12 +116,10 @@ void StringMetaInserter::insert(const Name& name)
     const Name key = getStringKey(index);
     mMetadata.insertMeta(key, StringMetadata(name));
 
-    // finally update the caches
+    // finally update the caches (insertion sort)
 
-    mIndices.push_back(index);
-    std::sort(mIndices.begin(), mIndices.end());
-    mValues.push_back(name);
-    std::sort(mValues.begin(), mValues.end());
+    mIndices.insert(std::upper_bound(mIndices.begin(), mIndices.end(), index), index);
+    mValues.insert(std::upper_bound(mValues.begin(), mValues.end(), name), name);
 }
 
 
@@ -143,7 +141,7 @@ void StringMetaInserter::resetCache()
         mIndices.push_back(index);
 
         // extract value from metadata and add to cache
-        StringMetadata* stringMeta = dynamic_cast<StringMetadata*>(meta.get());
+        StringMetadata* stringMeta = static_cast<StringMetadata*>(meta.get());
         assert(stringMeta);
         mValues.push_back(stringMeta->value());
     }
