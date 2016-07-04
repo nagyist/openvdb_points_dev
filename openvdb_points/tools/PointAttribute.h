@@ -55,20 +55,16 @@ namespace tools {
 /// @brief Appends a new attribute to the VDB tree.
 ///
 /// @param tree          the PointDataTree to be appended to.
-/// @param newAttribute  name and type for the new attribute.
+/// @param name          name for the new attribute.
 /// @param defaultValue  metadata default attribute value
 /// @param hidden        mark attribute as hidden
 /// @param transient     mark attribute as transient
-/// @param group         mark attribute as group
-/// @param string        mark attribute as string
-template <typename PointDataTree>
+template <typename AttributeType, typename PointDataTree>
 inline void appendAttribute(PointDataTree& tree,
-                            const AttributeSet::Util::NameAndType& newAttribute,
+                            const Name& name,
                             Metadata::Ptr defaultValue = Metadata::Ptr(),
                             const bool hidden = false,
-                            const bool transient = false,
-                            const bool group = false,
-                            const bool string = false);
+                            const bool transient = false);
 
 /// @brief Drops attributes from the VDB tree.
 ///
@@ -304,14 +300,10 @@ inline void appendAttribute(PointDataTree& tree,
         OPENVDB_THROW(KeyError, "Cannot append an attribute with a non-unique name - " << name << ".");
     }
 
-    // create new attribute type
-    AttributeSet::Util::NameAndType nameAndType(name, AttributeType::attributeType());
-
     // create a new attribute descriptor
-    NameAndTypeVec vec;
-    vec.push_back(nameAndType);
 
-    Descriptor::Ptr newDescriptor = descriptor.duplicateAppend(vec);
+    AttributeSet::Util::NameAndType nameAndType(name, AttributeType::attributeType());
+    Descriptor::Ptr newDescriptor = descriptor.duplicateAppend(nameAndType);
 
     // store the attribute default value in the descriptor metadata
 

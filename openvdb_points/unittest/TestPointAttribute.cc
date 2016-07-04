@@ -102,9 +102,9 @@ TestPointAttribute::testAppendDrop()
     CPPUNIT_ASSERT_EQUAL(attributeSet.descriptor().size(), size_t(1));
 
     { // append an attribute, check descriptors are as expected, default value test
-        appendAttribute(tree,   Descriptor::NameAndType("id", AttributeI::attributeType()),
+        appendAttribute<AttributeI>(tree,  "id",
                                 /*defaultValue*/TypedMetadata<AttributeI::ValueType>(AttributeI::ValueType(10)).copy(),
-                                /*hidden=*/false, /*transient=*/false, /*group=*/false);
+                                /*hidden=*/false, /*transient=*/false);
 
         CPPUNIT_ASSERT_EQUAL(attributeSet.descriptor().size(), size_t(2));
         CPPUNIT_ASSERT(attributeSet.descriptor() == attributeSet4.descriptor());
@@ -114,9 +114,9 @@ TestPointAttribute::testAppendDrop()
     }
 
     { // append three attributes, check ordering is consistent with insertion
-        appendAttribute(tree, Descriptor::NameAndType("test3", AttributeF::attributeType()));
-        appendAttribute(tree, Descriptor::NameAndType("test1", AttributeF::attributeType()));
-        appendAttribute(tree, Descriptor::NameAndType("test2", AttributeF::attributeType()));
+        appendAttribute<AttributeF>(tree, "test3");
+        appendAttribute<AttributeF>(tree, "test1");
+        appendAttribute<AttributeF>(tree, "test2");
 
         CPPUNIT_ASSERT_EQUAL(attributeSet.descriptor().size(), size_t(5));
 
@@ -174,10 +174,10 @@ TestPointAttribute::testAppendDrop()
     }
 
     { // add back previous attributes
-        appendAttribute(tree, Descriptor::NameAndType("id", AttributeI::attributeType()));
-        appendAttribute(tree, Descriptor::NameAndType("test3", AttributeF::attributeType()));
-        appendAttribute(tree, Descriptor::NameAndType("test1", AttributeF::attributeType()));
-        appendAttribute(tree, Descriptor::NameAndType("test2", AttributeF::attributeType()));
+        appendAttribute<AttributeI>(tree, "id");
+        appendAttribute<AttributeF>(tree, "test3");
+        appendAttribute<AttributeF>(tree, "test1");
+        appendAttribute<AttributeF>(tree, "test2");
 
         CPPUNIT_ASSERT_EQUAL(attributeSet.descriptor().size(), size_t(5));
     }
@@ -233,17 +233,17 @@ TestPointAttribute::testAppendDrop()
     }
 
     { // attempt to add an attribute with a name that already exists
-        appendAttribute(tree, Descriptor::NameAndType("test3", AttributeF::attributeType()));
-        CPPUNIT_ASSERT_THROW(appendAttribute(tree, Descriptor::NameAndType("test3", AttributeF::attributeType())), openvdb::KeyError);
+        appendAttribute<AttributeF>(tree, "test3");
+        CPPUNIT_ASSERT_THROW(appendAttribute<AttributeF>(tree, "test3"), openvdb::KeyError);
 
         CPPUNIT_ASSERT_EQUAL(attributeSet.descriptor().size(), size_t(2));
     }
 
     { // append attributes marked as hidden, transient, group and string
-        appendAttribute(tree, Descriptor::NameAndType("testHidden", AttributeF::attributeType()), Metadata::Ptr(), true, false, false);
-        appendAttribute(tree, Descriptor::NameAndType("testTransient", AttributeF::attributeType()), Metadata::Ptr(), false, true, false);
-        appendAttribute(tree, Descriptor::NameAndType("testGroup", GroupAttributeArray::attributeType()), Metadata::Ptr(), false, false, true);
-        appendAttribute(tree, Descriptor::NameAndType("testString", StringAttributeArray::attributeType()), Metadata::Ptr(), false, false, false, true);
+        appendAttribute<AttributeF>(tree, "testHidden", Metadata::Ptr(), true, false);
+        appendAttribute<AttributeF>(tree, "testTransient", Metadata::Ptr(), false, true);
+        appendAttribute<GroupAttributeArray>(tree, "testGroup", Metadata::Ptr(), false, false);
+        appendAttribute<StringAttributeArray>(tree, "testString", Metadata::Ptr(), false, false);
 
         const AttributeArray& arrayHidden = leafIter->attributeArray("testHidden");
         const AttributeArray& arrayTransient = leafIter->attributeArray("testTransient");
@@ -298,9 +298,9 @@ TestPointAttribute::testRename()
 
     const openvdb::TypedMetadata<float> defaultValue(5.0f);
 
-    appendAttribute(tree, Descriptor::NameAndType("test1", AttributeF::attributeType()), defaultValue.copy());
-    appendAttribute(tree, Descriptor::NameAndType("id", AttributeI::attributeType()));
-    appendAttribute(tree, Descriptor::NameAndType("test2", AttributeF::attributeType()));
+    appendAttribute<AttributeF>(tree, "test1", defaultValue.copy());
+    appendAttribute<AttributeI>(tree, "id");
+    appendAttribute<AttributeF>(tree, "test2");
 
     // retrieve first and last leaf attribute sets
 
@@ -346,7 +346,7 @@ TestPointAttribute::testRename()
     }
 
     { // don't rename group attributes
-        appendAttribute(tree, Descriptor::NameAndType("testGroup", GroupAttributeArray::attributeType()), Metadata::Ptr(), false, false, true);
+        appendAttribute<GroupAttributeArray>(tree, "testGroup", Metadata::Ptr());
         CPPUNIT_ASSERT_THROW(renameAttribute(tree, "testGroup", "testGroup2"), openvdb::KeyError);
     }
 
@@ -390,9 +390,9 @@ TestPointAttribute::testBloscCompress()
     PointDataTree::LeafIter leafIter2 = ++tree.beginLeaf();
 
     { // append an attribute, check descriptors are as expected
-        appendAttribute(tree, Descriptor::NameAndType("compact", AttributeI::attributeType()));
-        appendAttribute(tree, Descriptor::NameAndType("id", AttributeI::attributeType()));
-        appendAttribute(tree, Descriptor::NameAndType("id2", AttributeI::attributeType()));
+        appendAttribute<AttributeI>(tree, "compact");
+        appendAttribute<AttributeI>(tree, "id");
+        appendAttribute<AttributeI>(tree, "id2");
     }
 
     typedef AttributeWriteHandle<int> AttributeHandleRWI;

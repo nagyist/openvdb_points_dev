@@ -253,23 +253,17 @@ TestPointConversion::testPointConversion()
 
     // add id and populate
 
-    AttributeSet::Util::NameAndType nameAndType("id", AttributeI::attributeType());
-
-    appendAttribute(tree, nameAndType);
+    appendAttribute<AttributeI>(tree, "id");
     populateAttribute(tree, pointIndexGrid->tree(), "id", id);
 
     // add uniform and populate
 
-    AttributeSet::Util::NameAndType nameAndType2("uniform", AttributeF::attributeType());
-
-    appendAttribute(tree, nameAndType2);
+    appendAttribute<AttributeF>(tree, "uniform");
     populateAttribute(tree, pointIndexGrid->tree(), "uniform", uniform);
 
     // add string and populate
 
-    AttributeSet::Util::NameAndType nameAndType3("string", StringAttributeArray::attributeType());
-    appendAttribute(tree, nameAndType3, Metadata::Ptr(),
-                    /*hidden=*/ false, /*transient=*/ false, /*group=*/ false, /*string=*/ true);
+    appendAttribute<StringAttributeArray>(tree, "string");
 
     // extract the metadata and reset the descriptors
     PointDataTree::LeafIter leafIter = tree.beginLeaf();

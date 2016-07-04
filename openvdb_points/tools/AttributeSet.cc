@@ -312,54 +312,6 @@ AttributeSet::makeUnique(size_t pos)
 }
 
 
-template <typename AttributeType>
-AttributeArray::Ptr
-AttributeSet::appendAttribute(  const Name& name,
-                                Metadata::Ptr defaultValue)
-{
-    const Util::NameAndType nameAndType(name, AttributeType::attributeType());
-
-    Descriptor::NameAndTypeVec vec;
-    vec.push_back(nameAndType);
-
-    Descriptor::Ptr descriptor = mDescr->duplicateAppend(vec);
-
-    // store the attribute default value in the descriptor metadata
-    if (defaultValue)   descriptor->setDefaultValue(name, *defaultValue);
-
-    return this->appendAttribute<AttributeType>(*mDescr, descriptor);
-}
-
-
-template <typename AttributeType>
-AttributeArray::Ptr
-AttributeSet::appendAttribute(const Descriptor& expected, DescriptorPtr& replacement)
-{
-    // ensure the descriptor is as expected
-    if (*mDescr != expected) {
-        OPENVDB_THROW(LookupError, "Cannot append attributes as descriptors do not match.")
-    }
-
-    const size_t offset = mDescr->size();
-
-    mDescr = replacement;
-
-    assert(mDescr->size() >= offset);
-
-    // extract the array length from the first attribute array if it exists
-
-    const size_t arrayLength = offset > 0 ? this->get(0)->size() : 1;
-
-    // append the new array
-
-    AttributeArray::Ptr array = AttributeType::create(arrayLength);
-
-    mAttrs.push_back(array);
-
-    return array;
-}
-
-
 void
 AttributeSet::dropAttributes(const std::vector<size_t>& pos)
 {
@@ -833,17 +785,6 @@ AttributeSet::Descriptor::duplicateAppend(const NameAndType& attribute) const
     return Descriptor::create(attributes.vec, mGroupMap, mMetadata);
 }
 
-
-AttributeSet::Descriptor::Ptr
-AttributeSet::Descriptor::duplicateAppend(const NameAndTypeVec& vec) const
-{
-    Inserter attributes;
-
-    this->appendTo(attributes.vec);
-    attributes.add(vec);
-
-    return Descriptor::create(attributes.vec, mGroupMap, mMetadata);
-}
 
 AttributeSet::Descriptor::Ptr
 AttributeSet::Descriptor::duplicateDrop(const std::vector<size_t>& pos) const
