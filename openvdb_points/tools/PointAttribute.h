@@ -179,11 +179,11 @@ struct AppendAttributeOp {
 
             if (mHidden)      attribute->setHidden(true);
             if (mTransient)   attribute->setTransient(true);
-            if (mString)      attribute->setString(true);
+            // if (mString)      attribute->setString(true);
 
-            if (mGroup) {
-                GroupAttributeArray::cast(*attribute).setGroup(true);
-            }
+            // if (mGroup) {
+            //     GroupAttributeArray::cast(*attribute).setGroup(true);
+            // }
         }
     }
 
@@ -461,7 +461,7 @@ inline void renameAttributes(   PointDataTree& tree,
         const AttributeArray* array = attributeSet.getConst(oldName);
         assert(array);
 
-        if (GroupAttributeArray::isGroup(*array)) {
+        if (isGroup(*array)) {
             OPENVDB_THROW(KeyError, "Cannot rename group attribute - " << oldName << ".");
         }
 

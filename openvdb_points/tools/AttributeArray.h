@@ -66,8 +66,6 @@ namespace OPENVDB_VERSION_NAME {
 // Add new typedef for a Name pair
 typedef std::pair<Name, Name> NamePair;
 
-typedef uint32_t StringType;
-
 namespace tools {
 
 
@@ -180,39 +178,6 @@ fixedPointToFloatingPoint(const math::Vec3<IntegerT>& v)
 
 ////////////////////////////////////////
 
-// Attribute codec schemes
-
-template<typename StorageType_>
-struct NullAttributeCodec
-{
-    typedef StorageType_ StorageType;
-    template<typename ValueType> static void decode(const StorageType&, ValueType&);
-    template<typename ValueType> static void encode(const StorageType&, ValueType&);
-    static const char* name() { return "null"; }
-};
-
-
-template<typename IntType>
-struct FixedPointAttributeCodec
-{
-    typedef IntType StorageType;
-    template<typename ValueType> static void decode(const StorageType&, ValueType&);
-    template<typename ValueType> static void encode(const ValueType&, StorageType&);
-    static const char* name() { return "fxpt"; }
-};
-
-
-struct UnitVecAttributeCodec
-{
-    typedef uint16_t StorageType;
-    template<typename T> static void decode(const StorageType&, math::Vec3<T>&);
-    template<typename T> static void encode(const math::Vec3<T>&, StorageType&);
-    static const char* name() { return "uvec"; }
-};
-
-
-////////////////////////////////////////
-
 
 /// Base class for storing attribute data
 class AttributeArray
@@ -312,13 +277,6 @@ public:
     /// Return @c true if this attribute is not serialized during stream output.
     bool isTransient() const { return bool(mFlags & TRANSIENT); }
 
-    /// @brief Specify whether this attribute is a string attribute.
-    /// @note  Attributes must be of StringType to be able to be set as string,
-    ///        attributes are not string by default.
-    void setString(bool state);
-    /// Return @c true if this attribute is a string attribute.
-    bool isString() const { return bool(mFlags & STRING); }
-
     /// @brief Retrieve the attribute array flags
     uint16_t flags() const { return mFlags; }
 
@@ -387,6 +345,42 @@ struct AttributeArray::Accessor : public AttributeArray::AccessorBase
     ValuePtr  mCollapser;
     ValuePtr  mFiller;
 }; // struct AttributeArray::Accessor
+
+
+////////////////////////////////////////
+
+// Attribute codec schemes
+
+template<typename StorageType_>
+struct NullAttributeCodec
+{
+    typedef StorageType_ StorageType;
+    template<typename ValueType> static void decode(const StorageType&, ValueType&);
+    template<typename ValueType> static void encode(const StorageType&, ValueType&);
+    static const char* name() { return "null"; }
+    static Int16 flags() { return Int16(0); }
+};
+
+
+template<typename IntType>
+struct FixedPointAttributeCodec
+{
+    typedef IntType StorageType;
+    template<typename ValueType> static void decode(const StorageType&, ValueType&);
+    template<typename ValueType> static void encode(const ValueType&, StorageType&);
+    static const char* name() { return "fxpt"; }
+    static Int16 flags() { return Int16(0); }
+};
+
+
+struct UnitVecAttributeCodec
+{
+    typedef uint16_t StorageType;
+    template<typename T> static void decode(const StorageType&, math::Vec3<T>&);
+    template<typename T> static void encode(const math::Vec3<T>&, StorageType&);
+    static const char* name() { return "uvec"; }
+    static Int16 flags() { return Int16(0); }
+};
 
 
 ////////////////////////////////////////
@@ -713,6 +707,9 @@ TypedAttributeArray<ValueType_, Codec_>::TypedAttributeArray(
 {
     mSize = std::max(size_t(1), mSize);
     Codec::encode(uniformValue, mData[0]);
+
+    // apply codec flags to attribute array
+    mFlags |= Codec::flags();
 }
 
 

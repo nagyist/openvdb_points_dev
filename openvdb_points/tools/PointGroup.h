@@ -416,7 +416,7 @@ public:
                                         itEnd = map.end(); it != itEnd; ++it) {
 
             const AttributeArray* array = mAttributeSet.getConst(it->first);
-            if (GroupAttributeArray::isGroup(*array)) {
+            if (isGroup(*array)) {
                 indices.push_back(it->second);
             }
         }

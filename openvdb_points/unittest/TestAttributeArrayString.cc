@@ -201,31 +201,24 @@ TestAttributeArrayString::testStringAttribute()
 
         CPPUNIT_ASSERT(!attr.isTransient());
         CPPUNIT_ASSERT(!attr.isHidden());
-        CPPUNIT_ASSERT(attr.isString());
+        CPPUNIT_ASSERT(isString(attr));
 
         attr.setTransient(true);
         CPPUNIT_ASSERT(attr.isTransient());
         CPPUNIT_ASSERT(!attr.isHidden());
-        CPPUNIT_ASSERT(attr.isString());
+        CPPUNIT_ASSERT(isString(attr));
 
         attr.setHidden(true);
         CPPUNIT_ASSERT(attr.isTransient());
         CPPUNIT_ASSERT(attr.isHidden());
-        CPPUNIT_ASSERT(attr.isString());
+        CPPUNIT_ASSERT(isString(attr));
 
         attr.setTransient(false);
         CPPUNIT_ASSERT(!attr.isTransient());
         CPPUNIT_ASSERT(attr.isHidden());
-        CPPUNIT_ASSERT(attr.isString());
-
-        attr.setString(false);
-        CPPUNIT_ASSERT(!attr.isTransient());
-        CPPUNIT_ASSERT(attr.isHidden());
-        CPPUNIT_ASSERT(!attr.isString());
+        CPPUNIT_ASSERT(isString(attr));
 
         StringAttributeArray attrB(attr);
-
-        attr.setString(true);
 
         CPPUNIT_ASSERT(matchingNamePairs(attr.type(), attrB.type()));
         CPPUNIT_ASSERT_EQUAL(attr.size(), attrB.size());
@@ -233,12 +226,7 @@ TestAttributeArrayString::testStringAttribute()
         CPPUNIT_ASSERT_EQUAL(attr.isUniform(), attrB.isUniform());
         CPPUNIT_ASSERT_EQUAL(attr.isTransient(), attrB.isTransient());
         CPPUNIT_ASSERT_EQUAL(attr.isHidden(), attrB.isHidden());
-        CPPUNIT_ASSERT_EQUAL(attr.isString(), attrB.isString());
-    }
-
-    { // Failed type
-        TypedAttributeArray<float> test(50);
-        CPPUNIT_ASSERT_THROW(test.setString(true), openvdb::TypeError);
+        CPPUNIT_ASSERT_EQUAL(isString(attr), isString(attrB));
     }
 
     { // IO
@@ -250,7 +238,6 @@ TestAttributeArrayString::testStringAttribute()
         }
 
         attrA.setHidden(true);
-        attrA.setString(true);
 
         std::ostringstream ostr(std::ios_base::binary);
         attrA.write(ostr);
@@ -266,7 +253,7 @@ TestAttributeArrayString::testStringAttribute()
         CPPUNIT_ASSERT_EQUAL(attrA.isUniform(), attrB.isUniform());
         CPPUNIT_ASSERT_EQUAL(attrA.isTransient(), attrB.isTransient());
         CPPUNIT_ASSERT_EQUAL(attrA.isHidden(), attrB.isHidden());
-        CPPUNIT_ASSERT_EQUAL(attrA.isString(), attrB.isString());
+        CPPUNIT_ASSERT_EQUAL(isString(attrA), isString(attrB));
 
         for (unsigned i = 0; i < unsigned(count); ++i) {
             CPPUNIT_ASSERT_EQUAL(attrA.get(i), attrB.get(i));
@@ -284,7 +271,6 @@ TestAttributeArrayString::testStringAttributeHandle()
     MetaMap metadata;
 
     StringAttributeArray attr(4);
-    attr.setString(true);
     StringAttributeHandle handle(attr, metadata);
 
     CPPUNIT_ASSERT_EQUAL(handle.size(), (unsigned long) 4);
@@ -372,7 +358,6 @@ TestAttributeArrayString::testStringAttributeWriteHandle()
     MetaMap metadata;
 
     StringAttributeArray attr(4);
-    attr.setString(true);
     StringAttributeWriteHandle handle(attr, metadata);
 
     { // add some values to metadata

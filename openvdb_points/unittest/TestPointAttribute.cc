@@ -260,15 +260,15 @@ TestPointAttribute::testAppendDrop()
         CPPUNIT_ASSERT(!arrayGroup.isTransient());
         CPPUNIT_ASSERT(!arrayString.isTransient());
 
-        CPPUNIT_ASSERT(!GroupAttributeArray::isGroup(arrayHidden));
-        CPPUNIT_ASSERT(!GroupAttributeArray::isGroup(arrayTransient));
-        CPPUNIT_ASSERT(GroupAttributeArray::isGroup(arrayGroup));
-        CPPUNIT_ASSERT(!GroupAttributeArray::isGroup(arrayString));
+        CPPUNIT_ASSERT(!isGroup(arrayHidden));
+        CPPUNIT_ASSERT(!isGroup(arrayTransient));
+        CPPUNIT_ASSERT(isGroup(arrayGroup));
+        CPPUNIT_ASSERT(!isGroup(arrayString));
 
-        CPPUNIT_ASSERT(!arrayHidden.isString());
-        CPPUNIT_ASSERT(!arrayTransient.isString());
-        CPPUNIT_ASSERT(!arrayGroup.isString());
-        CPPUNIT_ASSERT(arrayString.isString());
+        CPPUNIT_ASSERT(!isString(arrayHidden));
+        CPPUNIT_ASSERT(!isString(arrayTransient));
+        CPPUNIT_ASSERT(!isString(arrayGroup));
+        CPPUNIT_ASSERT(isString(arrayString));
     }
 }
 

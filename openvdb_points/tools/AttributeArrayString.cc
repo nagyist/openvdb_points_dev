@@ -169,7 +169,7 @@ StringAttributeHandle::StringAttributeHandle(const AttributeArray& array,
         : mHandle(array, preserveCompression)
         , mMetadata(metadata)
 {
-    if (!array.isString()) {
+    if (!isString(array)) {
         OPENVDB_THROW(TypeError, "Cannot create a StringAttributeHandle for an attribute array that is not a string.");
     }
 }

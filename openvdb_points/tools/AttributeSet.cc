@@ -234,7 +234,7 @@ AttributeSet::groupOffset(const Util::GroupIndex& index) const
         OPENVDB_THROW(LookupError, "Out of range group index.")
     }
 
-    if (!GroupAttributeArray::isGroup(*mAttrs[index.first])) {
+    if (!isGroup(*mAttrs[index.first])) {
         OPENVDB_THROW(LookupError, "Group index invalid.")
     }
 
@@ -242,7 +242,7 @@ AttributeSet::groupOffset(const Util::GroupIndex& index) const
 
     size_t relativeIndex = 0;
     for (unsigned i = 0; i < mAttrs.size(); i++) {
-        if (i < index.first && GroupAttributeArray::isGroup(*mAttrs[i]))    relativeIndex++;
+        if (i < index.first && isGroup(*mAttrs[i]))    relativeIndex++;
     }
 
     const size_t GROUP_BITS = sizeof(GroupType) * CHAR_BIT;
@@ -271,7 +271,7 @@ AttributeSet::groupIndex(const size_t offset) const
 
     std::vector<unsigned> groups;
     for (unsigned i = 0; i < mAttrs.size(); i++) {
-        if (GroupAttributeArray::isGroup(*mAttrs[i]))      groups.push_back(i);
+        if (isGroup(*mAttrs[i]))      groups.push_back(i);
     }
 
     if (offset >= groups.size() * GROUP_BITS) {

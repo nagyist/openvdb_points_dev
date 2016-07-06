@@ -72,29 +72,50 @@ private:
 ////////////////////////////////////////
 
 
-template <typename Codec_ = NullAttributeCodec<StringType> >
-class StringTypedAttributeArray : public TypedAttributeArray<StringType, Codec_>
+typedef uint32_t StringType;
+
+
+template<typename StorageType_>
+struct StringAttributeCodec
 {
-public:
-    typedef StringType                  ValueType;
-    typedef Codec_                      Codec;
-    typedef typename Codec::StorageType StorageType;
-
-    /// Default constructor, always constructs a uniform attribute.
-    explicit StringTypedAttributeArray(  size_t n = 1,
-                                    const ValueType& uniformValue = zeroVal<ValueType>())
-        : TypedAttributeArray<StringType, Codec_>(n, uniformValue) { this->setString(true); }
-
-    /// Deep copy constructor (optionally decompress during copy).
-    StringTypedAttributeArray(const StringTypedAttributeArray& array,
-                        const bool decompress = false)
-        : TypedAttributeArray<StringType, Codec_>(array, decompress) { this->setString(true); }
-
-}; // class StringTypedAttributeArray
+    typedef StorageType_ StorageType;
+    typedef StringType ValueType;
+    static void decode(const StorageType&, ValueType&);
+    static void encode(const ValueType&, StorageType&);
+    static const char* name() { return "str"; }
+    static Int16 flags() { return Int16(0); }
+};
 
 
-// Convenience typedef when using with no codec
-typedef StringTypedAttributeArray<>     StringAttributeArray;
+typedef TypedAttributeArray<StringType, StringAttributeCodec<StringType> > StringAttributeArray;
+
+
+////////////////////////////////////////
+
+
+template<typename StorageType_>
+inline void
+StringAttributeCodec<StorageType_>::decode(const StorageType& data, ValueType& val)
+{
+    val = static_cast<ValueType>(data);
+}
+
+
+template<typename StorageType_>
+inline void
+StringAttributeCodec<StorageType_>::encode(const ValueType& val, StorageType& data)
+{
+    data = static_cast<ValueType>(val);
+}
+
+
+////////////////////////////////////////
+
+
+inline bool isString(const AttributeArray& array)
+{
+    return array.isType<StringAttributeArray>();
+}
 
 
 ////////////////////////////////////////

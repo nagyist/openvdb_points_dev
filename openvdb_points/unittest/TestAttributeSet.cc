@@ -844,13 +844,11 @@ TestAttributeSet::testAttributeSet()
 
         AttributeSet attrSet(descr);
 
-        GroupAttributeArray::cast(*attrSet.get("group1")).setGroup(true);
-
         attrSet.get("hidden1")->setHidden(true);
         attrSet.get("hidden2")->setHidden(true);
 
         CPPUNIT_ASSERT_EQUAL(attrSet.size(AttributeArray::TRANSIENT), size_t(0));
-        CPPUNIT_ASSERT_EQUAL(attrSet.size(AttributeArray::GROUP), size_t(1));
+        // CPPUNIT_ASSERT_EQUAL(attrSet.size(AttributeArray::GROUP), size_t(1));
         CPPUNIT_ASSERT_EQUAL(attrSet.size(AttributeArray::HIDDEN), size_t(2));
     }
 
@@ -933,10 +931,6 @@ TestAttributeSet::testAttributeSetGroups()
             .vec);
 
         AttributeSet attrSet(descr);
-
-        GroupAttributeArray::cast(*attrSet.get("group1")).setGroup(true);
-        GroupAttributeArray::cast(*attrSet.get("group2")).setGroup(true);
-        GroupAttributeArray::cast(*attrSet.get("group3")).setGroup(true);
 
         std::stringstream ss;
         for (int i = 0; i < 17; i++) {
