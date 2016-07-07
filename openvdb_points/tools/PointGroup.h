@@ -356,9 +356,11 @@ public:
     /// that can be stored without increasing the number of group attribute arrays
     size_t unusedGroups() const
     {
+        const Descriptor& descriptor = mAttributeSet.descriptor();
+
         // compute total slots (one slot per bit of the group attributes)
 
-        const size_t groupAttributes = mAttributeSet.size(AttributeArray::GROUP);
+        const size_t groupAttributes = descriptor.count<GroupAttributeArray>();
 
         if (groupAttributes == 0)   return 0;
 

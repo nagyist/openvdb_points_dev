@@ -834,23 +834,6 @@ TestAttributeSet::testAttributeSet()
     openvdb::MetaMap& meta = attrSetA.descriptor().getMetadata();
     meta.insertMeta("exampleMeta", openvdb::FloatMetadata(2.0));
 
-    { // flag size test
-        Descriptor::Ptr descr = Descriptor::create(Descriptor::Inserter()
-            .add("hidden1", AttributeI::attributeType())
-            .add("group1", GroupAttributeArray::attributeType())
-            .add("hidden2", AttributeI::attributeType())
-            .vec);
-
-        AttributeSet attrSet(descr);
-
-        attrSet.get("hidden1")->setHidden(true);
-        attrSet.get("hidden2")->setHidden(true);
-
-        CPPUNIT_ASSERT_EQUAL(attrSet.size(AttributeArray::TRANSIENT), size_t(0));
-        // CPPUNIT_ASSERT_EQUAL(attrSet.size(AttributeArray::GROUP), size_t(1));
-        CPPUNIT_ASSERT_EQUAL(attrSet.size(AttributeArray::HIDDEN), size_t(2));
-    }
-
     { // I/O test
         std::ostringstream ostr(std::ios_base::binary);
         attrSetA.write(ostr);
