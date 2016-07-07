@@ -270,7 +270,7 @@ public:
             for (AttributeSet::Descriptor::ConstIterator it = nameToPosMap.begin(), it_end = nameToPosMap.end();
                     it != it_end; ++it) {
                 const openvdb::tools::AttributeArray& array = iter->attributeArray(it->second);
-                if (openvdb::tools::GroupAttributeArray::isGroup(array))    continue;
+                if (isGroup(array))    continue;
 
                 if (first) {
                     first = false;
@@ -285,7 +285,7 @@ public:
 
                 // modify string attribute types to use "str"
 
-                if (array.isString()) {
+                if (isString(array)) {
                     valueType = "str";
                 }
 

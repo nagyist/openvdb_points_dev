@@ -249,7 +249,7 @@ struct HoudiniWriteAttribute
 
     struct Handle
     {
-        Handle(HoudiniWriteAttribute<T>& attribute)
+        explicit Handle(HoudiniWriteAttribute<T>& attribute)
             : mHandle(&attribute.mAttribute) { }
 
         template <typename ValueType>
@@ -261,7 +261,7 @@ struct HoudiniWriteAttribute
         typename GAHandleTraits<T>::RW mHandle;
     }; // struct Handle
 
-    HoudiniWriteAttribute(GA_Attribute& attribute)
+    explicit HoudiniWriteAttribute(GA_Attribute& attribute)
         : mAttribute(attribute) { }
 
     void expand() {
@@ -288,7 +288,7 @@ struct HoudiniReadAttribute
     typedef T value_type;
     typedef T PosType;
 
-    HoudiniReadAttribute(const GA_Attribute& attribute, OffsetListPtr offsets)
+    explicit HoudiniReadAttribute(const GA_Attribute& attribute, OffsetListPtr offsets = OffsetListPtr())
         : mAttribute(attribute)
         , mOffsets(offsets) { }
 
@@ -328,7 +328,7 @@ private:
 
 struct HoudiniGroup
 {
-    HoudiniGroup(GA_PointGroup& group)
+    explicit HoudiniGroup(GA_PointGroup& group)
         : mGroup(group) { }
 
     void setOffsetOn(openvdb::Index index) {
@@ -406,8 +406,7 @@ convertPointDataGridToHoudini(GU_Detail& detail,
 
         // explicitly handle string attribute type
         const openvdb::tools::AttributeArray& array = leafIter->attributeArray(it->second);
-        const bool isString = array.isString();
-        if (isString)   type = "string";
+        if (isString(array))   type = "string";
 
         // create the attribute if it doesn't already exist in the detail
         if (attributeRef.isInvalid()) {
