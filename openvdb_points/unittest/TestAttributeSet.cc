@@ -331,11 +331,6 @@ TestAttributeSet::testAttributeSetDescriptor()
         Descriptor::NameAndType invalidAttr("test1!", AttributeS::attributeType());
         CPPUNIT_ASSERT_THROW(descr->duplicateAppend(invalidAttr), openvdb::RuntimeError);
 
-        Descriptor::Inserter names;
-        names.add(invalidAttr);
-        CPPUNIT_ASSERT_THROW(Descriptor::create(names.vec), openvdb::RuntimeError);
-        CPPUNIT_ASSERT_THROW(descr->duplicateAppend(names.vec), openvdb::RuntimeError);
-
         const openvdb::Index64 offset(0);
         const openvdb::Index64 zeroLength(0);
         const openvdb::Index64 oneLength(1);
