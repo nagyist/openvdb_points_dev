@@ -114,6 +114,7 @@ public:
     CPPUNIT_TEST(testRegistry);
     CPPUNIT_TEST(testAttributeArray);
     CPPUNIT_TEST(testAttributeHandle);
+    CPPUNIT_TEST(testStrided);
     CPPUNIT_TEST(testDelayedLoad);
     CPPUNIT_TEST(testProfile);
 
@@ -124,6 +125,7 @@ public:
     void testRegistry();
     void testAttributeArray();
     void testAttributeHandle();
+    void testStrided();
     void testDelayedLoad();
     void testProfile();
 }; // class TestAttributeArray
@@ -206,8 +208,8 @@ TestAttributeArray::testFixedPointConversion()
 
 namespace {
 
-static AttributeArray::Ptr factory1(size_t) { return AttributeArray::Ptr(); }
-static AttributeArray::Ptr factory2(size_t) { return AttributeArray::Ptr(); }
+static AttributeArray::Ptr factory1(size_t, Index) { return AttributeArray::Ptr(); }
+static AttributeArray::Ptr factory2(size_t, Index) { return AttributeArray::Ptr(); }
 
 } // namespace
 
@@ -948,6 +950,134 @@ TestAttributeArray::testAttributeHandle()
         CPPUNIT_ASSERT(array);
 
         CPPUNIT_ASSERT_EQUAL(array->get(6), float(11));
+    }
+}
+
+void
+TestAttributeArray::testStrided()
+{
+    typedef openvdb::tools::TypedAttributeArray<int> AttributeArrayI;
+    typedef AttributeHandle<int, /*Strided=*/true> StridedHandle;
+    typedef AttributeWriteHandle<int, /*Strided=*/true> StridedWriteHandle;
+    typedef AttributeHandle<int, /*Strided=*/true, /*Interleaved=*/true> InterleavedHandle;
+    typedef AttributeWriteHandle<int, /*Strided=*/true, /*Interleaved=*/true> InterleavedWriteHandle;
+
+    { // non-strided array
+        AttributeArrayI::Ptr array = AttributeArrayI::create(/*n=*/2, /*stride=*/1);
+        CPPUNIT_ASSERT(!array->isStrided());
+        CPPUNIT_ASSERT_EQUAL(array->stride(), Index(1));
+        CPPUNIT_ASSERT_EQUAL(array->size(), size_t(2));
+        // cannot create a StridedAttributeHandle with a stride of 1
+        CPPUNIT_ASSERT_THROW(StridedHandle::create(*array), openvdb::TypeError);
+        CPPUNIT_ASSERT_THROW(StridedWriteHandle::create(*array), openvdb::TypeError);
+    }
+
+    { // strided array
+        AttributeArrayI::Ptr array = AttributeArrayI::create(/*n=*/2, /*stride=*/3);
+
+        CPPUNIT_ASSERT(array->isStrided());
+        CPPUNIT_ASSERT_EQUAL(array->stride(), Index(3));
+        CPPUNIT_ASSERT_EQUAL(array->size(), size_t(2));
+        CPPUNIT_ASSERT(array->isUniform());
+
+        CPPUNIT_ASSERT_EQUAL(array->get(0), 0);
+        CPPUNIT_ASSERT_EQUAL(array->get(5), 0);
+        CPPUNIT_ASSERT_THROW(array->get(6), IndexError); // out-of-range
+
+        CPPUNIT_ASSERT_THROW(InterleavedHandle::create(*array), TypeError);
+        CPPUNIT_ASSERT_THROW(InterleavedWriteHandle::create(*array), TypeError);
+        CPPUNIT_ASSERT_NO_THROW(StridedHandle::create(*array));
+        CPPUNIT_ASSERT_NO_THROW(StridedWriteHandle::create(*array));
+
+        array->collapse(10);
+
+        CPPUNIT_ASSERT_EQUAL(array->get(0), int(10));
+        CPPUNIT_ASSERT_EQUAL(array->get(5), int(10));
+
+        array->expand();
+
+        CPPUNIT_ASSERT_EQUAL(array->get(0), int(10));
+        CPPUNIT_ASSERT_EQUAL(array->get(5), int(10));
+
+        array->collapse(0);
+
+        CPPUNIT_ASSERT_EQUAL(array->get(0), int(0));
+        CPPUNIT_ASSERT_EQUAL(array->get(5), int(0));
+
+        StridedWriteHandle writeHandle(*array);
+
+        writeHandle.set(0, 2, 5);
+        writeHandle.set(1, 1, 10);
+
+        CPPUNIT_ASSERT_EQUAL(writeHandle.stride(), Index(3));
+        CPPUNIT_ASSERT_EQUAL(writeHandle.size(), size_t(2));
+
+        // non-interleaved: 0 0 5 0 10 0
+
+        CPPUNIT_ASSERT_EQUAL(array->get(2), 5);
+        CPPUNIT_ASSERT_EQUAL(array->get(4), 10);
+
+        CPPUNIT_ASSERT_EQUAL(writeHandle.get(0, 2), 5);
+        CPPUNIT_ASSERT_EQUAL(writeHandle.get(1, 1), 10);
+
+        StridedHandle handle(*array);
+
+        CPPUNIT_ASSERT_EQUAL(handle.get(0, 2), 5);
+        CPPUNIT_ASSERT_EQUAL(handle.get(1, 1), 10);
+
+        CPPUNIT_ASSERT_EQUAL(handle.stride(), Index(3));
+        CPPUNIT_ASSERT_EQUAL(handle.size(), size_t(2));
+
+        CPPUNIT_ASSERT_EQUAL(array->memUsage(), sizeof(int) * /*size*/3 * /*stride*/2 + /*array*/64);
+    }
+
+    { // strided, interleaved array
+        AttributeArrayI::Ptr array = AttributeArrayI::create(/*n=*/2, /*stride=*/3);
+        array->setInterleaved(true);
+
+        CPPUNIT_ASSERT(array->isStrided());
+        CPPUNIT_ASSERT(array->isInterleaved());
+        CPPUNIT_ASSERT_EQUAL(array->stride(), Index(3));
+        CPPUNIT_ASSERT_EQUAL(array->size(), size_t(2));
+        CPPUNIT_ASSERT(array->isUniform());
+
+        CPPUNIT_ASSERT_EQUAL(array->get(0), 0);
+        CPPUNIT_ASSERT_EQUAL(array->get(5), 0);
+        CPPUNIT_ASSERT_THROW(array->get(6), IndexError); // out-of-range
+
+        CPPUNIT_ASSERT_EQUAL(array->get(4), 0);
+        CPPUNIT_ASSERT_EQUAL(array->get(3), 0);
+
+        CPPUNIT_ASSERT_THROW(StridedHandle::create(*array), TypeError);
+        CPPUNIT_ASSERT_THROW(StridedWriteHandle::create(*array), TypeError);
+        CPPUNIT_ASSERT_NO_THROW(InterleavedHandle::create(*array));
+        CPPUNIT_ASSERT_NO_THROW(InterleavedWriteHandle::create(*array));
+
+        InterleavedWriteHandle writeHandle(*array);
+
+        CPPUNIT_ASSERT_EQUAL(array->get(4), 0);
+        CPPUNIT_ASSERT_EQUAL(array->get(3), 0);
+
+        CPPUNIT_ASSERT_EQUAL(array->get(4), 0);
+        CPPUNIT_ASSERT_EQUAL(array->get(3), 0);
+
+        writeHandle.set(0, 2, 5);
+        writeHandle.set(1, 1, 10);
+
+        // interleaved: 0 0 0 10 5 0
+
+        CPPUNIT_ASSERT_EQUAL(array->get(4), 5);
+        CPPUNIT_ASSERT_EQUAL(array->get(3), 10);
+
+        CPPUNIT_ASSERT_EQUAL(writeHandle.get(0, 2), 5);
+        CPPUNIT_ASSERT_EQUAL(writeHandle.get(1, 1), 10);
+
+        InterleavedHandle handle(*array);
+
+        CPPUNIT_ASSERT_EQUAL(handle.get(0, 2), 5);
+        CPPUNIT_ASSERT_EQUAL(handle.get(1, 1), 10);
+
+        CPPUNIT_ASSERT_EQUAL(array->memUsage(), sizeof(int) * /*size*/3 * /*stride*/2 + /*array*/64);
     }
 }
 
