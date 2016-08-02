@@ -73,12 +73,12 @@ struct AttributeWrapper
             : mBuffer(attribute.mAttribute) { }
 
         template <typename ValueType>
-        void set(openvdb::Index offset, const ValueType& value) {
+        void set(openvdb::Index offset, openvdb::Index /*stride*/, const ValueType& value) {
             mBuffer[offset] = value;
         }
 
         template <typename ValueType>
-        void set(openvdb::Index offset, const openvdb::math::Vec3<ValueType>& value) {
+        void set(openvdb::Index offset, openvdb::Index /*stride*/, const openvdb::math::Vec3<ValueType>& value) {
             mBuffer[offset] = value;
         }
 
@@ -97,9 +97,9 @@ struct AttributeWrapper
     std::vector<T>& buffer() { return mAttribute; }
 
     template <typename ValueT>
-    void get(size_t n, ValueT& value) const { value = mAttribute[n]; }
+    void get(ValueT& value, size_t n, openvdb::Index /*offset*/ = 0) const { value = mAttribute[n]; }
     template <typename ValueT>
-    void getPos(size_t n, ValueT& value) const { this->get<ValueT>(n, value); }
+    void getPos(size_t n, ValueT& value) const { this->get<ValueT>(value, n); }
 
 private:
     std::vector<T> mAttribute;
@@ -187,17 +187,17 @@ void genPoints( const int numPoints, const double scale,
             pos[1] = std::sin(theta)*std::sin(phi)*scale;
             pos[2] = std::cos(theta)*scale;
 
-            positionHandle.set(i, pos);
-            idHandle.set(i, i);
-            uniformHandle.set(i, 100.0f);
+            positionHandle.set(i, /*stride*/1, pos);
+            idHandle.set(i, /*stride*/1, i);
+            uniformHandle.set(i, /*stride*/1, 100.0f);
 
             // add points with even id to the group
             if ((i % 2) == 0) {
                 group.setOffsetOn(i);
-                stringHandle.set(i, "testA");
+                stringHandle.set(i, /*stride*/1, "testA");
             }
             else {
-                stringHandle.set(i, "testB");
+                stringHandle.set(i, /*stride*/1, "testB");
             }
 
             i++;
@@ -377,9 +377,9 @@ TestPointConversion::testPointConversion()
     getPointOffsets(pointOffsets, tree, includeGroups);
 
     convertPointDataGridPosition(outputPosition, *pointDataGrid, pointOffsets, startOffset, includeGroups);
-    convertPointDataGridAttribute(outputId, tree, pointOffsets, startOffset, idIndex, includeGroups);
-    convertPointDataGridAttribute(outputUniform, tree, pointOffsets, startOffset, uniformIndex, includeGroups);
-    convertPointDataGridAttribute(outputString, tree, pointOffsets, startOffset, stringIndex, includeGroups);
+    convertPointDataGridAttribute(outputId, tree, pointOffsets, startOffset, idIndex, /*stride*/1, includeGroups);
+    convertPointDataGridAttribute(outputUniform, tree, pointOffsets, startOffset, uniformIndex, /*stride*/1, includeGroups);
+    convertPointDataGridAttribute(outputString, tree, pointOffsets, startOffset, stringIndex, /*stride*/1, includeGroups);
     convertPointDataGridGroup(outputGroup, tree, pointOffsets, startOffset, groupIndex, includeGroups);
 
     CPPUNIT_ASSERT_EQUAL(size_t(outputPosition.size() - startOffset), size_t(halfCount));

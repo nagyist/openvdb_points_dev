@@ -101,7 +101,7 @@ TestPointAttribute::testAppendDrop()
     CPPUNIT_ASSERT_EQUAL(attributeSet.descriptor().size(), size_t(1));
 
     { // append an attribute, check descriptors are as expected, default value test
-        appendAttribute<AttributeI>(tree,  "id",
+        appendAttribute<AttributeI>(tree,  "id", /*stride=*/1,
                                 /*defaultValue*/TypedMetadata<AttributeI::ValueType>(AttributeI::ValueType(10)).copy(),
                                 /*hidden=*/false, /*transient=*/false);
 
@@ -239,10 +239,10 @@ TestPointAttribute::testAppendDrop()
     }
 
     { // append attributes marked as hidden, transient, group and string
-        appendAttribute<AttributeF>(tree, "testHidden", Metadata::Ptr(), true, false);
-        appendAttribute<AttributeF>(tree, "testTransient", Metadata::Ptr(), false, true);
-        appendAttribute<GroupAttributeArray>(tree, "testGroup", Metadata::Ptr(), false, false);
-        appendAttribute<StringAttributeArray>(tree, "testString", Metadata::Ptr(), false, false);
+        appendAttribute<AttributeF>(tree, "testHidden", /*stride=*/1, Metadata::Ptr(), true, false);
+        appendAttribute<AttributeF>(tree, "testTransient", /*stride=*/1, Metadata::Ptr(), false, true);
+        appendAttribute<GroupAttributeArray>(tree, "testGroup", /*stride=*/1, Metadata::Ptr(), false, false);
+        appendAttribute<StringAttributeArray>(tree, "testString", /*stride=*/1, Metadata::Ptr(), false, false);
 
         const AttributeArray& arrayHidden = leafIter->attributeArray("testHidden");
         const AttributeArray& arrayTransient = leafIter->attributeArray("testTransient");
@@ -294,7 +294,7 @@ TestPointAttribute::testRename()
 
     const openvdb::TypedMetadata<float> defaultValue(5.0f);
 
-    appendAttribute<AttributeF>(tree, "test1", defaultValue.copy());
+    appendAttribute<AttributeF>(tree, "test1", /*stride=*/1, defaultValue.copy());
     appendAttribute<AttributeI>(tree, "id");
     appendAttribute<AttributeF>(tree, "test2");
 
@@ -342,7 +342,7 @@ TestPointAttribute::testRename()
     }
 
     { // don't rename group attributes
-        appendAttribute<GroupAttributeArray>(tree, "testGroup", Metadata::Ptr());
+        appendAttribute<GroupAttributeArray>(tree, "testGroup", /*stride=*/1, Metadata::Ptr());
         CPPUNIT_ASSERT_THROW(renameAttribute(tree, "testGroup", "testGroup2"), openvdb::KeyError);
     }
 

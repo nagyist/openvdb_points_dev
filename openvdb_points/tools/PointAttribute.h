@@ -62,6 +62,7 @@ namespace tools {
 template <typename AttributeType, typename PointDataTree>
 inline void appendAttribute(PointDataTree& tree,
                             const Name& name,
+                            const Index stride = 1,
                             Metadata::Ptr defaultValue = Metadata::Ptr(),
                             const bool hidden = false,
                             const bool transient = false);
@@ -152,10 +153,12 @@ struct AppendAttributeOp {
 
     AppendAttributeOp(  PointDataTreeType& tree,
                         AttributeSet::DescriptorPtr& descriptor,
+                        const Index stride = 1,
                         const bool hidden = false,
                         const bool transient = false)
         : mTree(tree)
         , mDescriptor(descriptor)
+        , mStride(stride)
         , mHidden(hidden)
         , mTransient(transient) { }
 
@@ -165,7 +168,7 @@ struct AppendAttributeOp {
 
             const AttributeSet::Descriptor& expected = leaf->attributeSet().descriptor();
 
-            AttributeArray::Ptr attribute = leaf->template appendAttribute<AttributeType>(expected, mDescriptor);
+            AttributeArray::Ptr attribute = leaf->template appendAttribute<AttributeType>(expected, mDescriptor, mStride);
 
             if (mHidden)      attribute->setHidden(true);
             if (mTransient)   attribute->setTransient(true);
@@ -176,6 +179,7 @@ struct AppendAttributeOp {
 
     PointDataTreeType&              mTree;
     AttributeSet::DescriptorPtr&    mDescriptor;
+    const Index                     mStride;
     const bool                      mHidden;
     const bool                      mTransient;
 }; // class AppendAttributeOp
@@ -279,6 +283,7 @@ struct BloscCompressAttributesOp {
 template <typename AttributeType, typename PointDataTree>
 inline void appendAttribute(PointDataTree& tree,
                             const Name& name,
+                            const Index stride,
                             Metadata::Ptr defaultValue,
                             const bool hidden, const bool transient)
 {
@@ -312,7 +317,7 @@ inline void appendAttribute(PointDataTree& tree,
 
     // insert attributes using the new descriptor
 
-    AppendAttributeOp<AttributeType, PointDataTree> append(tree, newDescriptor, hidden, transient);
+    AppendAttributeOp<AttributeType, PointDataTree> append(tree, newDescriptor, stride, hidden, transient);
     tbb::parallel_for(typename tree::template LeafManager<PointDataTree>(tree).leafRange(), append);
 }
 
