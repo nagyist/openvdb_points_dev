@@ -60,6 +60,20 @@ inline Index64 iterCount(const IterT& iter);
 ////////////////////////////////////////
 
 
+/// @brief A no-op filter that can be used when iterating over all indices
+class NullFilter
+{
+public:
+    struct Data { };
+
+    template <typename LeafT>
+    static NullFilter create(const LeafT& /*leaf*/, const Data& /*data*/)   { return NullFilter(); }
+
+    template <typename IterT>
+    static bool valid(const IterT& /*iter*/) { return true; }
+}; // class NullFilter
+
+
 /// @brief A forward iterator over array indices
 class IndexIter
 {
