@@ -158,8 +158,8 @@ multiGroupMatches(  const LeafT& leaf, const Index32 size,
                     const std::vector<Name>& include, const std::vector<Name>& exclude,
                     const std::vector<int>& indices)
 {
-    typedef FilterIndexIter<IndexIter, MultiGroupFilter> IndexGroupIter;
-    IndexIter indexIter(0, size);
+    typedef IndexIter<ValueVoxelCIter, MultiGroupFilter> IndexGroupIter;
+    ValueVoxelCIter indexIter(0, size);
     MultiGroupFilter::Data data(include, exclude);
     MultiGroupFilter filter = MultiGroupFilter::create(leaf, data);
     IndexGroupIter iter(indexIter, filter);
@@ -417,7 +417,7 @@ void setId(PointDataTree& tree, const size_t index, const std::vector<int>& ids)
     for (PointDataTree::LeafIter leafIter = tree.beginLeaf(); leafIter; ++leafIter) {
         AttributeWriteHandle<int>::Ptr id = AttributeWriteHandle<int>::create(leafIter->attributeArray(index));
 
-        for (PointDataTree::LeafNodeType::IndexIter iter = leafIter->beginIndex(); iter; ++iter) {
+        for (PointDataTree::LeafNodeType::IndexAllIter iter = leafIter->beginIndexAll(); iter; ++iter) {
             if (offset >= int(ids.size()))   throw std::runtime_error("Out of range");
 
             id->set(*iter, ids[offset++]);
@@ -473,7 +473,7 @@ TestIndexFilter::testAttributeHashFilter()
 
         PointDataTree::LeafCIter leafIter = tree.cbeginLeaf();
 
-        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndex();
+        PointDataTree::LeafNodeType::IndexAllIter indexIter = leafIter->beginIndexAll();
         HashFilter filter = HashFilter::create(*leafIter, data);
 
         CPPUNIT_ASSERT(!filter.valid(indexIter));
@@ -483,7 +483,7 @@ TestIndexFilter::testAttributeHashFilter()
         CPPUNIT_ASSERT(!indexIter);
         ++leafIter;
 
-        indexIter = leafIter->beginIndex();
+        indexIter = leafIter->beginIndexAll();
         HashFilter filter2 = HashFilter::create(*leafIter, data);
         CPPUNIT_ASSERT(!filter2.valid(indexIter));
         ++indexIter;
@@ -497,7 +497,7 @@ TestIndexFilter::testAttributeHashFilter()
 
         PointDataTree::LeafCIter leafIter = tree.cbeginLeaf();
 
-        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndex();
+        PointDataTree::LeafNodeType::IndexAllIter indexIter = leafIter->beginIndexAll();
         HashFilter filter = HashFilter::create(*leafIter, data);
 
         CPPUNIT_ASSERT(filter.valid(indexIter));
@@ -507,7 +507,7 @@ TestIndexFilter::testAttributeHashFilter()
         CPPUNIT_ASSERT(!indexIter);
         ++leafIter;
 
-        indexIter = leafIter->beginIndex();
+        indexIter = leafIter->beginIndexAll();
         HashFilter filter2 = HashFilter::create(*leafIter, data);
         CPPUNIT_ASSERT(filter2.valid(indexIter));
         ++indexIter;
@@ -521,7 +521,7 @@ TestIndexFilter::testAttributeHashFilter()
 
         PointDataTree::LeafCIter leafIter = tree.cbeginLeaf();
 
-        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndex();
+        PointDataTree::LeafNodeType::IndexAllIter indexIter = leafIter->beginIndexAll();
         HashFilter filter = HashFilter::create(*leafIter, data);
 
         CPPUNIT_ASSERT(!filter.valid(indexIter));
@@ -531,7 +531,7 @@ TestIndexFilter::testAttributeHashFilter()
         CPPUNIT_ASSERT(!indexIter);
         ++leafIter;
 
-        indexIter = leafIter->beginIndex();
+        indexIter = leafIter->beginIndexAll();
         HashFilter filter2 = HashFilter::create(*leafIter, data);
         CPPUNIT_ASSERT(filter2.valid(indexIter));
         ++indexIter;
@@ -545,7 +545,7 @@ TestIndexFilter::testAttributeHashFilter()
 
         PointDataTree::LeafCIter leafIter = tree.cbeginLeaf();
 
-        PointDataTree::LeafNodeType::IndexIter indexIter = leafIter->beginIndex();
+        PointDataTree::LeafNodeType::IndexAllIter indexIter = leafIter->beginIndexAll();
         HashFilter filter = HashFilter::create(*leafIter, data);
 
         CPPUNIT_ASSERT(filter.valid(indexIter));
@@ -555,7 +555,7 @@ TestIndexFilter::testAttributeHashFilter()
         CPPUNIT_ASSERT(!indexIter);
         ++leafIter;
 
-        indexIter = leafIter->beginIndex();
+        indexIter = leafIter->beginIndexAll();
         HashFilter filter2 = HashFilter::create(*leafIter, data);
         CPPUNIT_ASSERT(!filter2.valid(indexIter));
         ++indexIter;
@@ -735,7 +735,7 @@ TestIndexFilter::testBBoxFilter()
     using namespace openvdb::tools;
 
     typedef TypedAttributeArray<Vec3s>   AttributeVec3s;
-    typedef PointDataTree::LeafNodeType::ValueOnCIter ValueOnCIter;
+    typedef PointDataTree::LeafNodeType::IndexOnIter IndexOnIter;
 
     AttributeVec3s::registerType();
 
@@ -765,8 +765,7 @@ TestIndexFilter::testBBoxFilter()
     PointDataTree::LeafCIter leafIter = tree.cbeginLeaf();
 
     {
-        ValueOnCIter valueIter(leafIter->beginValueOn());
-        ValueIndexIter<ValueOnCIter> iter(valueIter);
+        IndexOnIter iter(leafIter->beginIndexOn());
 
         // point 1
 
@@ -793,8 +792,7 @@ TestIndexFilter::testBBoxFilter()
     // leaf 2
 
     {
-        ValueOnCIter valueIter(leafIter->beginValueOn());
-        ValueIndexIter<ValueOnCIter> iter(valueIter);
+        IndexOnIter iter(leafIter->beginIndexOn());
 
         // point 3
 
