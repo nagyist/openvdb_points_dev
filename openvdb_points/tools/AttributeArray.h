@@ -214,7 +214,7 @@ public:
 
     typedef Ptr (*FactoryMethod)(size_t, Index);
 
-    template <typename T, bool Strided, bool Interleaved> friend class AttributeHandle;
+    template <typename ValueType, bool Strided, bool Interleaved> friend class AttributeHandle;
 
     AttributeArray() : mCompressedBytes(0), mFlags(0) {}
     virtual ~AttributeArray() {}
@@ -570,17 +570,17 @@ private:
 
 /// AttributeHandles provide access to specific TypedAttributeArray methods without needing
 /// to know the compression codec, however these methods also incur the cost of a function pointer
-template <typename T, bool Strided = false, bool Interleaved = false>
+template <typename ValueType, bool Strided = false, bool Interleaved = false>
 class AttributeHandle
 {
 public:
-    typedef AttributeHandle<T, Strided, Interleaved>    Handle;
-    typedef boost::shared_ptr<Handle>                   Ptr;
+    typedef AttributeHandle<ValueType, Strided, Interleaved>    Handle;
+    typedef boost::shared_ptr<Handle>                           Ptr;
 
 protected:
-    typedef T (*GetterPtr)(const AttributeArray* array, const Index n);
-    typedef void (*SetterPtr)(AttributeArray* array, const Index n, const T& value);
-    typedef void (*ValuePtr)(AttributeArray* array, const T& value);
+    typedef ValueType (*GetterPtr)(const AttributeArray* array, const Index n);
+    typedef void (*SetterPtr)(AttributeArray* array, const Index n, const ValueType& value);
+    typedef void (*ValuePtr)(AttributeArray* array, const ValueType& value);
 
 public:
     static Ptr create(const AttributeArray& array, const bool preserveCompression = true);
@@ -594,7 +594,7 @@ public:
 
     bool isUniform() const;
 
-    T get(Index n, Index m = 0) const;
+    ValueType get(Index n, Index m = 0) const;
 
 protected:
     Index index(Index n, Index m) const;
@@ -619,12 +619,12 @@ private:
 
 
 /// Write-able version of AttributeHandle
-template <typename T, bool Strided = false, bool Interleaved = false>
-class AttributeWriteHandle : public AttributeHandle<T, Strided, Interleaved>
+template <typename ValueType, bool Strided = false, bool Interleaved = false>
+class AttributeWriteHandle : public AttributeHandle<ValueType, Strided, Interleaved>
 {
 public:
-    typedef AttributeWriteHandle<T, Strided, Interleaved>   Handle;
-    typedef boost::shared_ptr<Handle>                       Ptr;
+    typedef AttributeWriteHandle<ValueType, Strided, Interleaved>   Handle;
+    typedef boost::shared_ptr<Handle>                               Ptr;
 
     static Ptr create(AttributeArray& array);
 
@@ -638,17 +638,17 @@ public:
 
     /// Replace the existing array with a uniform value (zero if none provided).
     void collapse();
-    void collapse(const T& uniformValue);
+    void collapse(const ValueType& uniformValue);
 
     /// Compact the existing array to become uniform if all values are identical
     bool compact();
 
     /// @brief Fill the existing array with the given value.
     /// @note Identical to collapse() except a non-uniform array will not become uniform.
-    void fill(const T& value);
+    void fill(const ValueType& value);
 
-    void set(Index n, const T& value);
-    void set(Index n, Index m, const T& value);
+    void set(Index n, const ValueType& value);
+    void set(Index n, Index m, const ValueType& value);
 }; // class AttributeWriteHandle
 
 
@@ -1522,16 +1522,16 @@ TypedAttributeArray<ValueType_, Codec_>::isEqual(const AttributeArray& other) co
 
 // AttributeHandle implementation
 
-template <typename T, bool Strided, bool Interleaved>
-typename AttributeHandle<T, Strided, Interleaved>::Ptr
-AttributeHandle<T, Strided, Interleaved>::create(const AttributeArray& array, const bool preserveCompression)
+template <typename ValueType, bool Strided, bool Interleaved>
+typename AttributeHandle<ValueType, Strided, Interleaved>::Ptr
+AttributeHandle<ValueType, Strided, Interleaved>::create(const AttributeArray& array, const bool preserveCompression)
 {
-    return  typename AttributeHandle<T, Strided, Interleaved>::Ptr(
-            new AttributeHandle<T, Strided, Interleaved>(array, preserveCompression));
+    return  typename AttributeHandle<ValueType, Strided, Interleaved>::Ptr(
+            new AttributeHandle<ValueType, Strided, Interleaved>(array, preserveCompression));
 }
 
-template <typename T, bool Strided, bool Interleaved>
-AttributeHandle<T, Strided, Interleaved>::AttributeHandle(const AttributeArray& array, const bool preserveCompression)
+template <typename ValueType, bool Strided, bool Interleaved>
+AttributeHandle<ValueType, Strided, Interleaved>::AttributeHandle(const AttributeArray& array, const bool preserveCompression)
     : mArray(&array)
     , mStride(array.stride())
     , mSize(array.size())
@@ -1577,7 +1577,7 @@ AttributeHandle<T, Strided, Interleaved>::AttributeHandle(const AttributeArray& 
     AttributeArray::AccessorBasePtr accessor = mArray->getAccessor();
     assert(accessor);
 
-    AttributeArray::Accessor<T>* typedAccessor = static_cast<AttributeArray::Accessor<T>*>(accessor.get());
+    AttributeArray::Accessor<ValueType>* typedAccessor = static_cast<AttributeArray::Accessor<ValueType>*>(accessor.get());
 
     if (!typedAccessor) {
         OPENVDB_THROW(RuntimeError, "Cannot bind AttributeHandle due to mis-matching types.");
@@ -1589,8 +1589,8 @@ AttributeHandle<T, Strided, Interleaved>::AttributeHandle(const AttributeArray& 
     mFiller = typedAccessor->mFiller;
 }
 
-template <typename T, bool Strided, bool Interleaved>
-Index AttributeHandle<T, Strided, Interleaved>::index(Index n, Index m) const
+template <typename ValueType, bool Strided, bool Interleaved>
+Index AttributeHandle<ValueType, Strided, Interleaved>::index(Index n, Index m) const
 {
     if (Strided) {
         if (Interleaved)    return m * mSize + n;
@@ -1599,14 +1599,14 @@ Index AttributeHandle<T, Strided, Interleaved>::index(Index n, Index m) const
     return n;
 }
 
-template <typename T, bool Strided, bool Interleaved>
-T AttributeHandle<T, Strided, Interleaved>::get(Index n, Index m) const
+template <typename ValueType, bool Strided, bool Interleaved>
+ValueType AttributeHandle<ValueType, Strided, Interleaved>::get(Index n, Index m) const
 {
     return mGetter(mArray, this->index(n, m));
 }
 
-template <typename T, bool Strided, bool Interleaved>
-bool AttributeHandle<T, Strided, Interleaved>::isUniform() const
+template <typename ValueType, bool Strided, bool Interleaved>
+bool AttributeHandle<ValueType, Strided, Interleaved>::isUniform() const
 {
     return mArray->isUniform();
 }
@@ -1616,56 +1616,56 @@ bool AttributeHandle<T, Strided, Interleaved>::isUniform() const
 
 // AttributeWriteHandle implementation
 
-template <typename T, bool Strided, bool Interleaved>
-typename AttributeWriteHandle<T, Strided, Interleaved>::Ptr
-AttributeWriteHandle<T, Strided, Interleaved>::create(AttributeArray& array)
+template <typename ValueType, bool Strided, bool Interleaved>
+typename AttributeWriteHandle<ValueType, Strided, Interleaved>::Ptr
+AttributeWriteHandle<ValueType, Strided, Interleaved>::create(AttributeArray& array)
 {
-    return  typename AttributeWriteHandle<T, Strided, Interleaved>::Ptr(
-            new AttributeWriteHandle<T, Strided, Interleaved>(array));
+    return  typename AttributeWriteHandle<ValueType, Strided, Interleaved>::Ptr(
+            new AttributeWriteHandle<ValueType, Strided, Interleaved>(array));
 }
 
-template <typename T, bool Strided, bool Interleaved>
-AttributeWriteHandle<T, Strided, Interleaved>::AttributeWriteHandle(AttributeArray& array)
-    : AttributeHandle<T, Strided, Interleaved>(array, /*preserveCompression = */ false) { }
+template <typename ValueType, bool Strided, bool Interleaved>
+AttributeWriteHandle<ValueType, Strided, Interleaved>::AttributeWriteHandle(AttributeArray& array)
+    : AttributeHandle<ValueType, Strided, Interleaved>(array, /*preserveCompression = */ false) { }
 
-template <typename T, bool Strided, bool Interleaved>
-void AttributeWriteHandle<T, Strided, Interleaved>::set(Index n, const T& value)
+template <typename ValueType, bool Strided, bool Interleaved>
+void AttributeWriteHandle<ValueType, Strided, Interleaved>::set(Index n, const ValueType& value)
 {
     this->mSetter(const_cast<AttributeArray*>(this->mArray), this->index(n, 0), value);
 }
 
-template <typename T, bool Strided, bool Interleaved>
-void AttributeWriteHandle<T, Strided, Interleaved>::set(Index n, Index m, const T& value)
+template <typename ValueType, bool Strided, bool Interleaved>
+void AttributeWriteHandle<ValueType, Strided, Interleaved>::set(Index n, Index m, const ValueType& value)
 {
     this->mSetter(const_cast<AttributeArray*>(this->mArray), this->index(n, m), value);
 }
 
-template <typename T, bool Strided, bool Interleaved>
-void AttributeWriteHandle<T, Strided, Interleaved>::expand(const bool fill)
+template <typename ValueType, bool Strided, bool Interleaved>
+void AttributeWriteHandle<ValueType, Strided, Interleaved>::expand(const bool fill)
 {
     const_cast<AttributeArray*>(this->mArray)->expand(fill);
 }
 
-template <typename T, bool Strided, bool Interleaved>
-void AttributeWriteHandle<T, Strided, Interleaved>::collapse()
+template <typename ValueType, bool Strided, bool Interleaved>
+void AttributeWriteHandle<ValueType, Strided, Interleaved>::collapse()
 {
     const_cast<AttributeArray*>(this->mArray)->collapse();
 }
 
-template <typename T, bool Strided, bool Interleaved>
-bool AttributeWriteHandle<T, Strided, Interleaved>::compact()
+template <typename ValueType, bool Strided, bool Interleaved>
+bool AttributeWriteHandle<ValueType, Strided, Interleaved>::compact()
 {
     return const_cast<AttributeArray*>(this->mArray)->compact();
 }
 
-template <typename T, bool Strided, bool Interleaved>
-void AttributeWriteHandle<T, Strided, Interleaved>::collapse(const T& uniformValue)
+template <typename ValueType, bool Strided, bool Interleaved>
+void AttributeWriteHandle<ValueType, Strided, Interleaved>::collapse(const ValueType& uniformValue)
 {
     this->mCollapser(const_cast<AttributeArray*>(this->mArray), uniformValue);
 }
 
-template <typename T, bool Strided, bool Interleaved>
-void AttributeWriteHandle<T, Strided, Interleaved>::fill(const T& value)
+template <typename ValueType, bool Strided, bool Interleaved>
+void AttributeWriteHandle<ValueType, Strided, Interleaved>::fill(const ValueType& value)
 {
     this->mFiller(const_cast<AttributeArray*>(this->mArray), value);
 }
