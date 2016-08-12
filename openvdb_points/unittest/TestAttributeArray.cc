@@ -436,7 +436,7 @@ TestAttributeArray::testAttributeArray()
         CPPUNIT_ASSERT_THROW(typedAttr.get(100), openvdb::IndexError);
     }
 
-    typedef openvdb::tools::FixedPointAttributeCodec<uint16_t> FixedPointCodec;
+    typedef openvdb::tools::FixedPointCodec<false> FixedPointCodec;
     typedef openvdb::tools::TypedAttributeArray<double, FixedPointCodec> AttributeArrayC;
 
     { // test hasValueType()
@@ -679,7 +679,7 @@ TestAttributeArray::testAttributeArray()
         }
     }
 
-    typedef openvdb::tools::FixedPointAttributeCodec<uint16_t> FixedPointCodec;
+    typedef openvdb::tools::FixedPointCodec<false> FixedPointCodec;
 
     { // Fixed codec range
         openvdb::tools::AttributeArray::Ptr attr1(new AttributeArrayC(50));
@@ -802,9 +802,9 @@ TestAttributeArray::testAttributeHandle()
     using namespace openvdb::tools;
     using namespace openvdb::math;
 
-    typedef TypedAttributeArray<int>                                                          AttributeI;
-    typedef TypedAttributeArray<float, NullAttributeCodec<half> >                             AttributeFH;
-    typedef TypedAttributeArray<Vec3f>                                                        AttributeVec3f;
+    typedef TypedAttributeArray<int>                        AttributeI;
+    typedef TypedAttributeArray<float, TruncateCodec>       AttributeFH;
+    typedef TypedAttributeArray<Vec3f>                      AttributeVec3f;
 
     typedef AttributeWriteHandle<int> AttributeHandleRWI;
 
@@ -1655,11 +1655,9 @@ TestAttributeArray::testProfile()
     using namespace openvdb::math;
     using namespace openvdb::tools;
 
-    typedef TypedAttributeArray<float>                                      AttributeArrayF;
-    typedef TypedAttributeArray<float,
-                                FixedPointAttributeCodec<uint16_t> >        AttributeArrayF16;
-    typedef TypedAttributeArray<float,
-                                FixedPointAttributeCodec<uint8_t> >         AttributeArrayF8;
+    typedef TypedAttributeArray<float>                              AttributeArrayF;
+    typedef TypedAttributeArray<float, FixedPointCodec<false> >     AttributeArrayF16;
+    typedef TypedAttributeArray<float, FixedPointCodec<true> >      AttributeArrayF8;
 
     ///////////////////////////////////////////////////
 
