@@ -963,10 +963,10 @@ TestAttributeArray::testStrided()
 {
     typedef openvdb::tools::TypedAttributeArray<int> AttributeArrayI;
     typedef AttributeHandle<int> NonStridedHandle;
-    typedef AttributeHandle<int, /*Strided=*/true> StridedHandle;
-    typedef AttributeWriteHandle<int, /*Strided=*/true> StridedWriteHandle;
-    typedef AttributeHandle<int, /*Strided=*/true, /*Interleaved=*/true> InterleavedHandle;
-    typedef AttributeWriteHandle<int, /*Strided=*/true, /*Interleaved=*/true> InterleavedWriteHandle;
+    typedef AttributeHandle<int, /*CodecType=*/UnknownCodec, /*Strided=*/true> StridedHandle;
+    typedef AttributeWriteHandle<int, /*CodecType=*/UnknownCodec, /*Strided=*/true> StridedWriteHandle;
+    typedef AttributeHandle<int, /*CodecType=*/UnknownCodec, /*Strided=*/true, /*Interleaved=*/true> InterleavedHandle;
+    typedef AttributeWriteHandle<int, /*CodecType=*/UnknownCodec, /*Strided=*/true, /*Interleaved=*/true> InterleavedWriteHandle;
 
     { // non-strided array
         AttributeArrayI::Ptr array = AttributeArrayI::create(/*n=*/2, /*stride=*/1);
