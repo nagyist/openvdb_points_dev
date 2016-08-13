@@ -400,34 +400,39 @@ TestAttributeArrayString::testStringAttributeWriteHandle()
     handle.resetCache();
 
     { // compact tests
-        CPPUNIT_ASSERT(!handle.compact());
-        handle.set(0, "testA");
-        handle.set(1, "testA");
-        handle.set(2, "testA");
-        handle.set(3, "testA");
-        CPPUNIT_ASSERT(handle.compact());
-        CPPUNIT_ASSERT(handle.isUniform());
+        CPPUNIT_ASSERT(!attr.compact());
+        StringAttributeWriteHandle handle2(attr, metadata);
+        handle2.set(0, "testA");
+        handle2.set(1, "testA");
+        handle2.set(2, "testA");
+        handle2.set(3, "testA");
+        CPPUNIT_ASSERT(attr.compact());
+        CPPUNIT_ASSERT(attr.isUniform());
     }
 
     { // expand tests
-        CPPUNIT_ASSERT(handle.isUniform());
-        handle.expand();
-        CPPUNIT_ASSERT(!handle.isUniform());
-        CPPUNIT_ASSERT_EQUAL(handle.get(0), Name("testA"));
-        CPPUNIT_ASSERT_EQUAL(handle.get(1), Name("testA"));
-        CPPUNIT_ASSERT_EQUAL(handle.get(2), Name("testA"));
-        CPPUNIT_ASSERT_EQUAL(handle.get(3), Name("testA"));
+        CPPUNIT_ASSERT(attr.isUniform());
+        attr.expand();
+        CPPUNIT_ASSERT(!attr.isUniform());
+        StringAttributeWriteHandle handle2(attr, metadata);
+        CPPUNIT_ASSERT_EQUAL(handle2.get(0), Name("testA"));
+        CPPUNIT_ASSERT_EQUAL(handle2.get(1), Name("testA"));
+        CPPUNIT_ASSERT_EQUAL(handle2.get(2), Name("testA"));
+        CPPUNIT_ASSERT_EQUAL(handle2.get(3), Name("testA"));
     }
 
     { // fill tests
-        CPPUNIT_ASSERT(!handle.isUniform());
-        handle.set(3, "testB");
-        handle.fill("testC");
-        CPPUNIT_ASSERT(!handle.isUniform());
-        CPPUNIT_ASSERT_EQUAL(handle.get(0), Name("testC"));
-        CPPUNIT_ASSERT_EQUAL(handle.get(1), Name("testC"));
-        CPPUNIT_ASSERT_EQUAL(handle.get(2), Name("testC"));
-        CPPUNIT_ASSERT_EQUAL(handle.get(3), Name("testC"));
+        CPPUNIT_ASSERT(!attr.isUniform());
+        StringAttributeWriteHandle handle2(attr, metadata);
+        handle2.set(3, "testB");
+        AttributeArray& array = attr;
+        array.fill<Name>("testC");
+        CPPUNIT_ASSERT(!attr.isUniform());
+        StringAttributeWriteHandle handle3(attr, metadata);
+        CPPUNIT_ASSERT_EQUAL(handle3.get(0), Name("testC"));
+        CPPUNIT_ASSERT_EQUAL(handle3.get(1), Name("testC"));
+        CPPUNIT_ASSERT_EQUAL(handle3.get(2), Name("testC"));
+        CPPUNIT_ASSERT_EQUAL(handle3.get(3), Name("testC"));
     }
 }
 

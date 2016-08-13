@@ -405,7 +405,7 @@ struct PopulateAttributeOp {
 
             // attempt to compact the array
 
-            attributeWriteHandle->compact();
+            //attributeWriteHandle->compact();
         }
     }
 

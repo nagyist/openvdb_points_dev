@@ -825,62 +825,6 @@ TestAttributeArray::testAttributeHandle()
     unsigned count = 50;
     AttributeSet attrSet(descr, /*arrayLength=*/count);
 
-    // check uniform value implementation
-
-    {
-        AttributeArray* array = attrSet.get(2);
-
-        AttributeHandleRWI handle(*array);
-
-        CPPUNIT_ASSERT_EQUAL(handle.size(), array->size());
-
-        CPPUNIT_ASSERT_EQUAL(handle.get(0), 0);
-        CPPUNIT_ASSERT_EQUAL(handle.get(10), 0);
-
-        handle.set(0, 10);
-        CPPUNIT_ASSERT(!handle.isUniform());
-
-        handle.collapse(5);
-        CPPUNIT_ASSERT(handle.isUniform());
-
-        CPPUNIT_ASSERT_EQUAL(handle.get(0), 5);
-        CPPUNIT_ASSERT_EQUAL(handle.get(20), 5);
-
-        handle.expand();
-        CPPUNIT_ASSERT(!handle.isUniform());
-
-        for (unsigned i = 0; i < unsigned(count); ++i) {
-            CPPUNIT_ASSERT_EQUAL(handle.get(i), 5);
-        }
-
-        CPPUNIT_ASSERT(handle.compact());
-        CPPUNIT_ASSERT(handle.isUniform());
-
-        handle.expand();
-
-        handle.fill(10);
-        CPPUNIT_ASSERT(!handle.isUniform());
-
-        for (unsigned i = 0; i < unsigned(count); ++i) {
-            CPPUNIT_ASSERT_EQUAL(handle.get(i), 10);
-        }
-
-        handle.collapse(7);
-        CPPUNIT_ASSERT(handle.isUniform());
-
-        CPPUNIT_ASSERT_EQUAL(handle.get(0), 7);
-        CPPUNIT_ASSERT_EQUAL(handle.get(20), 7);
-
-        handle.fill(5);
-        CPPUNIT_ASSERT(handle.isUniform());
-
-        for (unsigned i = 0; i < unsigned(count); ++i) {
-            CPPUNIT_ASSERT_EQUAL(handle.get(i), 5);
-        }
-
-        CPPUNIT_ASSERT(handle.isUniform());
-    }
-
     {
         AttributeArray* array = attrSet.get(0);
 

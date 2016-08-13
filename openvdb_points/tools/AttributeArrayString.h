@@ -170,20 +170,20 @@ public:
 
     /// @brief  If this array is uniform, replace it with an array of length size().
     /// @param  fill if true, assign the uniform value to each element of the array.
-    void expand(bool fill = true);
+    // void expand(bool fill = true);
 
     /// @brief Set membership for the whole array and attempt to collapse
     ///
     /// @param name Name of the String
-    void collapse();
-    void collapse(const Name& name);
+    // void collapse();
+    // void collapse(const Name& name);
 
     /// Compact the existing array to become uniform if all values are identical
-    bool compact();
+    // bool compact();
 
     /// @brief Fill the existing array with the given value.
     /// @note Identical to collapse() except a non-uniform array will not become uniform.
-    void fill(const Name& name);
+    // void fill(const Name& name);
 
     /// Set the value of the index to @param name
     void set(Index n, const Name& name);

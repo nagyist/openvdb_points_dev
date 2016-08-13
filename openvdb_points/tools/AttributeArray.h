@@ -274,6 +274,12 @@ public:
     /// Compact the existing array to become uniform if all values are identical
     virtual bool compact() = 0;
 
+    template <typename ValueType>
+    void collapse(const ValueType& uniformValue);
+
+    template <typename ValueType>
+    void fill(const ValueType& value);
+
     /// Return @c true if this array is compressed.
     bool isCompressed() const { return mCompressedBytes != 0; }
     /// Compress the attribute array.
@@ -365,6 +371,36 @@ struct AttributeArray::Accessor : public AttributeArray::AccessorBase
     ValuePtr  mCollapser;
     ValuePtr  mFiller;
 }; // struct AttributeArray::Accessor
+
+
+template <typename ValueType>
+void AttributeArray::collapse(const ValueType& uniformValue) {
+    AttributeArray::AccessorBasePtr accessor = this->getAccessor();
+    assert(accessor);
+
+    AttributeArray::Accessor<ValueType>* typedAccessor = static_cast<AttributeArray::Accessor<ValueType>*>(accessor.get());
+
+    if (!typedAccessor) {
+        OPENVDB_THROW(RuntimeError, "Cannot extract Accessor for AttributeArray.");
+    }
+
+    typedAccessor->mCollapser(this, uniformValue);
+}
+
+
+template <typename ValueType>
+void AttributeArray::fill(const ValueType& value) {
+    AttributeArray::AccessorBasePtr accessor = this->getAccessor();
+    assert(accessor);
+
+    AttributeArray::Accessor<ValueType>* typedAccessor = static_cast<AttributeArray::Accessor<ValueType>*>(accessor.get());
+
+    if (!typedAccessor) {
+        OPENVDB_THROW(RuntimeError, "Cannot extract Accessor for AttributeArray.");
+    }
+
+    typedAccessor->mFiller(this, value);
+}
 
 
 ////////////////////////////////////////
@@ -627,7 +663,6 @@ public:
 protected:
     typedef ValueType (*GetterPtr)(const AttributeArray* array, const Index n);
     typedef void (*SetterPtr)(AttributeArray* array, const Index n, const ValueType& value);
-    typedef void (*ValuePtr)(AttributeArray* array, const ValueType& value);
 
 public:
     static Ptr create(const AttributeArray& array, const bool preserveCompression = true);
@@ -650,8 +685,6 @@ protected:
 
     GetterPtr mGetter;
     SetterPtr mSetter;
-    ValuePtr  mCollapser;
-    ValuePtr  mFiller;
 
 private:
     // local copy of AttributeArray (to preserve compression)
@@ -678,21 +711,6 @@ public:
     AttributeWriteHandle(AttributeArray& array);
 
     virtual ~AttributeWriteHandle() { }
-
-    /// @brief  If this array is uniform, replace it with an array of length size().
-    /// @param  fill if true, assign the uniform value to each element of the array.
-    void expand(bool fill = true);
-
-    /// Replace the existing array with a uniform value (zero if none provided).
-    void collapse();
-    void collapse(const ValueType& uniformValue);
-
-    /// Compact the existing array to become uniform if all values are identical
-    bool compact();
-
-    /// @brief Fill the existing array with the given value.
-    /// @note Identical to collapse() except a non-uniform array will not become uniform.
-    void fill(const ValueType& value);
 
     void set(Index n, const ValueType& value);
     void set(Index n, Index m, const ValueType& value);
@@ -1627,8 +1645,6 @@ AttributeHandle<ValueType, CodecType, Strided, Interleaved>::AttributeHandle(con
 
     mGetter = typedAccessor->mGetter;
     mSetter = typedAccessor->mSetter;
-    mCollapser = typedAccessor->mCollapser;
-    mFiller = typedAccessor->mFiller;
 }
 
 template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
@@ -1710,36 +1726,6 @@ template <typename ValueType, typename CodecType, bool Strided, bool Interleaved
 void AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::set(Index n, Index m, const ValueType& value)
 {
     ArrayEval<CodecType, ValueType>::set(this->mSetter, const_cast<AttributeArray*>(this->mArray), this->index(n, m), value);
-}
-
-template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
-void AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::expand(const bool fill)
-{
-    const_cast<AttributeArray*>(this->mArray)->expand(fill);
-}
-
-template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
-void AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::collapse()
-{
-    const_cast<AttributeArray*>(this->mArray)->collapse();
-}
-
-template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
-bool AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::compact()
-{
-    return const_cast<AttributeArray*>(this->mArray)->compact();
-}
-
-template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
-void AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::collapse(const ValueType& uniformValue)
-{
-    this->mCollapser(const_cast<AttributeArray*>(this->mArray), uniformValue);
-}
-
-template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
-void AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::fill(const ValueType& value)
-{
-    this->mFiller(const_cast<AttributeArray*>(this->mArray), value);
 }
 
 

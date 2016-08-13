@@ -229,37 +229,37 @@ StringAttributeWriteHandle::StringAttributeWriteHandle(AttributeArray& array,
 }
 
 
-void StringAttributeWriteHandle::expand(bool fill)
-{
-    mWriteHandle.expand(fill);
-}
+// void StringAttributeWriteHandle::expand(bool fill)
+// {
+//     mWriteHandle.expand(fill);
+// }
 
 
-void StringAttributeWriteHandle::collapse()
-{
-    // zero is used for an empty string
-    mWriteHandle.collapse(0);
-}
+// void StringAttributeWriteHandle::collapse()
+// {
+//     // zero is used for an empty string
+//     mWriteHandle.collapse(0);
+// }
 
 
-void StringAttributeWriteHandle::collapse(const Name& name)
-{
-    Index index = getIndex(name);
-    mWriteHandle.collapse(index);
-}
+// void StringAttributeWriteHandle::collapse(const Name& name)
+// {
+//     Index index = getIndex(name);
+//     mWriteHandle.collapse(index);
+// }
 
 
-bool StringAttributeWriteHandle::compact()
-{
-    return mWriteHandle.compact();
-}
+// bool StringAttributeWriteHandle::compact()
+// {
+//     return mWriteHandle.compact();
+// }
 
 
-void StringAttributeWriteHandle::fill(const Name& name)
-{
-    Index index = getIndex(name);
-    mWriteHandle.fill(index);
-}
+// void StringAttributeWriteHandle::fill(const Name& name)
+// {
+//     Index index = getIndex(name);
+//     mWriteHandle.fill(index);
+// }
 
 
 void StringAttributeWriteHandle::set(Index n, const Name& name)
