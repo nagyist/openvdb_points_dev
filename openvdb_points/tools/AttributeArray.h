@@ -1013,9 +1013,9 @@ template<typename ValueType_, typename Codec_>
 typename TypedAttributeArray<ValueType_, Codec_>::ValueType
 TypedAttributeArray<ValueType_, Codec_>::getUnsafe(Index n) const
 {
+    assert(n < mSize * mStride);
     assert(!this->isOutOfCore());
     assert(!this->isCompressed());
-    assert(n < mSize * mStride);
 
     ValueType val;
     Codec::decode(/*in=*/mData[mIsUniform ? 0 : n], /*out=*/val);
@@ -1027,9 +1027,9 @@ template<typename ValueType_, typename Codec_>
 typename TypedAttributeArray<ValueType_, Codec_>::ValueType
 TypedAttributeArray<ValueType_, Codec_>::get(Index n) const
 {
+    if (n >= mSize * mStride)           OPENVDB_THROW(IndexError, "Out-of-range access.");
     if (this->isOutOfCore())            this->doLoad();
     if (this->isCompressed())           const_cast<TypedAttributeArray*>(this)->decompress();
-    if (n >= mSize * mStride)           OPENVDB_THROW(IndexError, "Out-of-range access.");
 
     return this->getUnsafe(n);
 }
@@ -1040,13 +1040,7 @@ template<typename T>
 void
 TypedAttributeArray<ValueType_, Codec_>::getUnsafe(Index n, T& val) const
 {
-    assert(!this->isOutOfCore());
-    assert(!this->isCompressed());
-    assert(n < mSize * mStride);
-
-    ValueType tmp;
-    Codec::decode(/*in=*/mData[mIsUniform ? 0 : n], /*out=*/tmp);
-    val = static_cast<T>(tmp);
+    val = static_cast<T>(this->getUnsafe(n));
 }
 
 
@@ -1055,11 +1049,7 @@ template<typename T>
 void
 TypedAttributeArray<ValueType_, Codec_>::get(Index n, T& val) const
 {
-    if (this->isOutOfCore())            this->doLoad();
-    if (this->isCompressed())           const_cast<TypedAttributeArray*>(this)->decompress();
-    if (n >= mSize * mStride)           OPENVDB_THROW(IndexError, "Out-of-range access.");
-
-    this->getUnsafe(n, val);
+    val = static_cast<T>(this->get(n));
 }
 
 
@@ -1075,13 +1065,14 @@ template<typename ValueType_, typename Codec_>
 void
 TypedAttributeArray<ValueType_, Codec_>::setUnsafe(Index n, const ValueType& val)
 {
+    assert(n < mSize * mStride);
     assert(!this->isOutOfCore());
     assert(!this->isCompressed());
-    assert(n < mSize * mStride);
+    assert(!this->isUniform());
 
-    if (mIsUniform)     this->expand();
+    // if (mIsUniform)  this->expand();
 
-    Codec::encode(/*in=*/val, /*out=*/mData[n]);
+    Codec::encode(/*in=*/val, /*out=*/mData[mIsUniform ? 0 : n]);
 }
 
 
@@ -1089,9 +1080,10 @@ template<typename ValueType_, typename Codec_>
 void
 TypedAttributeArray<ValueType_, Codec_>::set(Index n, const ValueType& val)
 {
+    if (n >= mSize * mStride)           OPENVDB_THROW(IndexError, "Out-of-range access.");
     if (this->isOutOfCore())            this->doLoad();
     if (this->isCompressed())           this->decompress();
-    if (n >= mSize * mStride)           OPENVDB_THROW(IndexError, "Out-of-range access.");
+    if (this->isUniform())              this->expand();
 
     this->setUnsafe(n, val);
 }
@@ -1102,14 +1094,7 @@ template<typename T>
 void
 TypedAttributeArray<ValueType_, Codec_>::setUnsafe(Index n, const T& val)
 {
-    assert(!this->isOutOfCore());
-    assert(!this->isCompressed());
-    assert(n < mSize * mStride);
-
-    if (mIsUniform)     this->expand();
-
-    const ValueType tmp = static_cast<ValueType>(val);
-    Codec::encode(/*in=*/tmp, /*out=*/mData[n]);
+    this->setUnsafe(n, static_cast<ValueType>(val));
 }
 
 
@@ -1118,11 +1103,7 @@ template<typename T>
 void
 TypedAttributeArray<ValueType_, Codec_>::set(Index n, const T& val)
 {
-    if (this->isOutOfCore())            this->doLoad();
-    if (this->isCompressed())           this->decompress();
-    if (n >= mSize * mStride)           OPENVDB_THROW(IndexError, "Out-of-range access.");
-
-    this->setUnsafe(n, val);
+    this->set(n, static_cast<ValueType>(val));
 }
 
 
@@ -1660,10 +1641,40 @@ Index AttributeHandle<ValueType, CodecType, Strided, Interleaved>::index(Index n
     return n;
 }
 
+template <typename CodecType, typename ValueType>
+struct ArrayEval
+{
+    typedef ValueType (*GetterPtr)(const AttributeArray* array, const Index n);
+    typedef void (*SetterPtr)(AttributeArray* array, const Index n, const ValueType& value);
+
+    static ValueType get(GetterPtr functor, const AttributeArray* array, const Index n) {
+        return (*functor)(array, n);
+    }
+
+    static void set(SetterPtr functor, AttributeArray* array, const Index n, const ValueType& value) {
+        (*functor)(array, n, value);
+    }
+};
+
+template <typename ValueType>
+struct ArrayEval<NullCodec, ValueType>
+{
+    typedef ValueType (*GetterPtr)(const AttributeArray* array, const Index n);
+    typedef void (*SetterPtr)(AttributeArray* array, const Index n, const ValueType& value);
+
+    static ValueType get(GetterPtr /*functor*/, const AttributeArray* array, const Index n) {
+        return TypedAttributeArray<ValueType, NullCodec>::getUnsafe(array, n);
+    }
+
+    static void set(SetterPtr /*functor*/, AttributeArray* array, const Index n, const ValueType& value) {
+        TypedAttributeArray<ValueType, NullCodec>::setUnsafe(array, n, value);
+    }
+};
+
 template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
 ValueType AttributeHandle<ValueType, CodecType, Strided, Interleaved>::get(Index n, Index m) const
 {
-    return mGetter(mArray, this->index(n, m));
+    return ArrayEval<CodecType, ValueType>::get(mGetter, mArray, this->index(n, m));
 }
 
 template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
@@ -1687,18 +1698,18 @@ AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::create(Attribu
 
 template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
 AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::AttributeWriteHandle(AttributeArray& array)
-    : AttributeHandle<ValueType, CodecType, Strided, Interleaved>(array, /*preserveCompression = */ false) { }
+    : AttributeHandle<ValueType, CodecType, Strided, Interleaved>(array, /*preserveCompression = */ false) { array.expand(); }
 
 template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
 void AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::set(Index n, const ValueType& value)
 {
-    this->mSetter(const_cast<AttributeArray*>(this->mArray), this->index(n, 0), value);
+    ArrayEval<CodecType, ValueType>::set(this->mSetter, const_cast<AttributeArray*>(this->mArray), this->index(n, 0), value);
 }
 
 template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>
 void AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::set(Index n, Index m, const ValueType& value)
 {
-    this->mSetter(const_cast<AttributeArray*>(this->mArray), this->index(n, m), value);
+    ArrayEval<CodecType, ValueType>::set(this->mSetter, const_cast<AttributeArray*>(this->mArray), this->index(n, m), value);
 }
 
 template <typename ValueType, typename CodecType, bool Strided, bool Interleaved>

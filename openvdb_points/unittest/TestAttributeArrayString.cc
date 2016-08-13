@@ -429,17 +429,6 @@ TestAttributeArrayString::testStringAttributeWriteHandle()
         CPPUNIT_ASSERT_EQUAL(handle.get(2), Name("testC"));
         CPPUNIT_ASSERT_EQUAL(handle.get(3), Name("testC"));
     }
-
-    { // collapse tests
-        handle.set(2, "testB");
-        handle.collapse("testA");
-        CPPUNIT_ASSERT(handle.isUniform());
-        CPPUNIT_ASSERT_EQUAL(handle.get(0), Name("testA"));
-        handle.set(2, "testB");
-        CPPUNIT_ASSERT(!handle.isUniform());
-        handle.collapse();
-        CPPUNIT_ASSERT_EQUAL(handle.get(0), Name(""));
-    }
 }
 
 

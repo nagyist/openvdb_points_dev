@@ -42,7 +42,7 @@ namespace OPENVDB_VERSION_NAME {
 namespace util {
 
 // TODO: expose this as an option to the vdb_test application
-//#define PROFILE
+#define PROFILE
 
 /// @brief Functionality similar to openvdb::util::CpuTimer except with prefix padding and no decimals.
 /// @note Profile timing should switch to use CpuTimer if these features were introduced.

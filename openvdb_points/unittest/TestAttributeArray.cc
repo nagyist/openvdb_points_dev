@@ -837,8 +837,6 @@ TestAttributeArray::testAttributeHandle()
         CPPUNIT_ASSERT_EQUAL(handle.get(0), 0);
         CPPUNIT_ASSERT_EQUAL(handle.get(10), 0);
 
-        CPPUNIT_ASSERT(handle.isUniform());
-
         handle.set(0, 10);
         CPPUNIT_ASSERT(!handle.isUniform());
 
@@ -1579,9 +1577,9 @@ namespace profile {
 typedef openvdb::util::ProfileTimer ProfileTimer;
 
 template <typename AttrT>
-void expand(const Name& prefix, AttrT& attr)
+void expand(const Name& /*prefix*/, AttrT& attr)
 {
-    ProfileTimer timer(prefix + ": expand");
+    // ProfileTimer timer(prefix + ": expand");
     attr.expand();
 }
 
@@ -1589,8 +1587,9 @@ template <typename AttrT>
 void set(const Name& prefix, AttrT& attr)
 {
     ProfileTimer timer(prefix + ": set");
-    for (size_t i = 0; i < attr.size(); i++) {
-        attr.set(i, typename AttrT::ValueType(i));
+    const size_t size = attr.size();
+    for (size_t i = 0; i < size; i++) {
+        attr.setUnsafe(i, typename AttrT::ValueType(i));
     }
 }
 
@@ -1600,7 +1599,20 @@ void setH(const Name& prefix, AttrT& attr)
     typedef typename AttrT::ValueType ValueType;
     ProfileTimer timer(prefix + ": setHandle");
     AttributeWriteHandle<ValueType> handle(attr);
-    for (size_t i = 0; i < attr.size(); i++) {
+    const size_t size = attr.size();
+    for (size_t i = 0; i < size; i++) {
+        handle.set(i, ValueType(i));
+    }
+}
+
+template <typename AttrT>
+void setHC(const Name& prefix, AttrT& attr)
+{
+    typedef typename AttrT::ValueType ValueType;
+    ProfileTimer timer(prefix + ": setHandle (C)");
+    AttributeWriteHandle<ValueType, NullCodec> handle(attr);
+    const size_t size = attr.size();
+    for (size_t i = 0; i < size; i++) {
         handle.set(i, ValueType(i));
     }
 }
@@ -1683,15 +1695,15 @@ TestAttributeArray::testProfile()
                 values[i] = float(i);
             }
         }
-        {
-            ProfileTimer timer("Vector<float>: sum");
-            float sum = 0;
-            for (int i = 0; i < elements; i++) {
-                sum += values[i];
-            }
-            // to prevent optimisation clean up
-            CPPUNIT_ASSERT(sum);
-        }
+        // {
+        //     ProfileTimer timer("Vector<float>: sum");
+        //     float sum = 0;
+        //     for (int i = 0; i < elements; i++) {
+        //         sum += values[i];
+        //     }
+        //     // to prevent optimisation clean up
+        //     CPPUNIT_ASSERT(sum);
+        // }
     }
 
     // AttributeArray
@@ -1700,21 +1712,21 @@ TestAttributeArray::testProfile()
         AttributeArrayF attr(elements);
         profile::expand("AttributeArray<float>", attr);
         profile::set("AttributeArray<float>", attr);
-        profile::sum("AttributeArray<float>", attr);
+        // profile::sum("AttributeArray<float>", attr);
     }
 
     {
         AttributeArrayF16 attr(elements);
         profile::expand("AttributeArray<float, fp16>", attr);
         profile::set("AttributeArray<float, fp16>", attr);
-        profile::sum("AttributeArray<float, fp16>", attr);
+        // profile::sum("AttributeArray<float, fp16>", attr);
     }
 
     {
         AttributeArrayF8 attr(elements);
         profile::expand("AttributeArray<float, fp8>", attr);
         profile::set("AttributeArray<float, fp8>", attr);
-        profile::sum("AttributeArray<float, fp8>", attr);
+        // profile::sum("AttributeArray<float, fp8>", attr);
     }
 
     // AttributeHandle
@@ -1722,22 +1734,45 @@ TestAttributeArray::testProfile()
     {
         AttributeArrayF attr(elements);
         profile::expand("AttributeHandle<float>", attr);
-        profile::setH("AttributeHandle<float>", attr);
-        profile::sumH("AttributeHandle<float>", attr);
+        profile::setHC("AttributeHandle<float>", attr);
+        // profile::sumH("AttributeHandle<float>", attr);
     }
 
     {
         AttributeArrayF16 attr(elements);
         profile::expand("AttributeHandle<float, fp16>", attr);
         profile::setH("AttributeHandle<float, fp16>", attr);
-        profile::sumH("AttributeHandle<float, fp16>", attr);
+        // profile::sumH("AttributeHandle<float, fp16>", attr);
     }
 
     {
         AttributeArrayF8 attr(elements);
         profile::expand("AttributeHandle<float, fp8>", attr);
         profile::setH("AttributeHandle<float, fp8>", attr);
-        profile::sumH("AttributeHandle<float, fp8>", attr);
+        // profile::sumH("AttributeHandle<float, fp8>", attr);
+    }
+
+    // AttributeHandle (explicit codec)
+
+    {
+        AttributeArrayF attr(elements);
+        profile::expand("AttributeHandle<float>", attr);
+        profile::setH("AttributeHandle<float>", attr);
+        // profile::sumH("AttributeHandle<float>", attr);
+    }
+
+    {
+        AttributeArrayF16 attr(elements);
+        profile::expand("AttributeHandle<float, fp16>", attr);
+        profile::setH("AttributeHandle<float, fp16>", attr);
+        // profile::sumH("AttributeHandle<float, fp16>", attr);
+    }
+
+    {
+        AttributeArrayF8 attr(elements);
+        profile::expand("AttributeHandle<float, fp8>", attr);
+        profile::setH("AttributeHandle<float, fp8>", attr);
+        // profile::sumH("AttributeHandle<float, fp8>", attr);
     }
 }
 
