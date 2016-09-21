@@ -228,10 +228,10 @@ public:
     void writeMetadata(std::ostream&, bool outputTransient = false) const;
 
     /// Read attribute data from a stream.
-    void readAttributes(std::istream&);
+    void readBuffers(std::istream&, const Index block);
     /// Write attribute data to a stream.
     /// @param outputTransient if true, write out transient attributes
-    void writeAttributes(std::ostream&, bool outputTransient = false) const;
+    void writeBuffers(std::ostream&, const Index block, bool outputTransient = false) const;
 
     /// Compare the descriptors and attribute arrays on the attribute sets
     /// Exit early if the descriptors do not match

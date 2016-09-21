@@ -455,7 +455,9 @@ void
 AttributeSet::read(std::istream& is)
 {
     this->readMetadata(is);
-    this->readAttributes(is);
+    for (size_t i = 0; i < mAttrs.size(); i++) {
+        this->readBuffers(is, Index(i));
+    }
 }
 
 
@@ -463,14 +465,25 @@ void
 AttributeSet::write(std::ostream& os, bool outputTransient) const
 {
     this->writeMetadata(os, outputTransient);
-    this->writeAttributes(os, outputTransient);
+    for (size_t i = 0; i < mAttrs.size(); i++) {
+        this->writeBuffers(os, Index(i), outputTransient);
+    }
 }
 
 
 void
 AttributeSet::readMetadata(std::istream& is)
 {
+    assert(mDescr);
+
     mDescr->read(is);
+
+    AttrArrayVec(mDescr->size()).swap(mAttrs); // allocate vector
+
+    for (size_t n = 0, N = mAttrs.size(); n < N; ++n) {
+        mAttrs[n] = AttributeArray::create(mDescr->type(n), 1, 1);
+        mAttrs[n]->readMetadata(is);
+    }
 }
 
 
@@ -500,32 +513,39 @@ AttributeSet::writeMetadata(std::ostream& os, bool outputTransient) const
         Descriptor::Ptr descr = mDescr->duplicateDrop(transientArrays);
         descr->write(os);
     }
+
+    // write attribute metadata
+
+    for (size_t i = 0; i < size(); i++) {
+        const AttributeArray* array = this->getConst(i);
+        array->writeMetadata(os, outputTransient);
+    }
 }
 
 
 void
-AttributeSet::readAttributes(std::istream& is)
+AttributeSet::readBuffers(std::istream& is, const Index block)
 {
     if (!mDescr) {
         OPENVDB_THROW(IllegalValueException, "Attribute set descriptor not defined.");
     }
 
-    AttrArrayVec(mDescr->size()).swap(mAttrs); // allocate vector
-
-    for (size_t n = 0, N = mAttrs.size(); n < N; ++n) {
-        // size and stride are defined when read from disk
-        mAttrs[n] = AttributeArray::create(mDescr->type(n), /*size*/1, /*stride*/1);
-        mAttrs[n]->read(is);
+    if (block > mAttrs.size()) {
+        OPENVDB_THROW(IllegalValueException, "Block index is out of range.");
     }
+
+    mAttrs[block]->readBuffers(is);
 }
 
 
 void
-AttributeSet::writeAttributes(std::ostream& os, bool outputTransient) const
+AttributeSet::writeBuffers(std::ostream& os, const Index block, bool outputTransient) const
 {
-    for (size_t n = 0, N = mAttrs.size(); n < N; ++n) {
-        mAttrs[n]->write(os, outputTransient);
+    if (block > mAttrs.size()) {
+        OPENVDB_THROW(IllegalValueException, "Block index is out of range.");
     }
+
+    mAttrs[block]->writeBuffers(os, outputTransient);
 }
 
 

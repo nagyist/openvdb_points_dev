@@ -351,6 +351,8 @@ public:
     void readTopology(std::istream& is, bool fromHalf = false);
     void writeTopology(std::ostream& os, bool toHalf = false) const;
 
+    Index buffers() const;
+
     void readBuffers(std::istream& is, bool fromHalf = false);
     void readBuffers(std::istream& is, const CoordBBox&, bool fromHalf = false);
     void writeBuffers(std::ostream& os, bool toHalf = false) const;
@@ -972,30 +974,102 @@ PointDataLeafNode<T, Log2Dim>::writeTopology(std::ostream& os, bool toHalf) cons
 }
 
 template<typename T, Index Log2Dim>
+inline Index
+PointDataLeafNode<T, Log2Dim>::buffers() const
+{
+    return Index(mAttributeSet->size() + 2);
+}
+
+template<typename T, Index Log2Dim>
 inline void
 PointDataLeafNode<T, Log2Dim>::readBuffers(std::istream& is, bool fromHalf)
 {
-    BaseLeaf::readBuffers(is, fromHalf);
+    if (io::getDataCompression(is) & /*io::COMPRESS_MULTIPLE_LEAF_BUFFERS*/0x8) {
+#ifdef OPENVDB_HAS_MULTIPLE_LEAF_BUFFERS
+        const io::StreamMetadata::Ptr meta = io::getStreamMetadataPtr(is);
 
+        if (!meta) {
+            OPENVDB_THROW(IoError, "Cannot read in a PointDataLeaf without StreamMetadata.");
+        }
+
+        const Index pass = meta->leafBuffer();
+
+        if (pass == 0) {
+            // pass 0 - voxel data
+            BaseLeaf::readBuffers(is, fromHalf);
+        }
+        else if (pass == 1) {
+            // pass 1 - descriptor and attribute metadata
+            mAttributeSet->readMetadata(is);
+        }
+        else if (pass < this->buffers()) {
+            // pass 2...n+2 - attribute buffers
+            mAttributeSet->readBuffers(is, pass - 2);
+        }
+        // pass is out of range for this leaf - ignored
+        return;
+#else
+        OPENVDB_THROW(IoError, "Cannot read in a PointDataLeaf that uses multiple leaf buffers without \
+                                using a dependent version of the OpenVDB library that supports this feature.");
+#endif
+    }
+
+    BaseLeaf::readBuffers(is, fromHalf);
     mAttributeSet->read(is);
 }
 
 template<typename T, Index Log2Dim>
 inline void
-PointDataLeafNode<T, Log2Dim>::readBuffers(std::istream& is, const CoordBBox& bbox, bool fromHalf)
+PointDataLeafNode<T, Log2Dim>::readBuffers(std::istream& is, const CoordBBox& /*bbox*/, bool fromHalf)
 {
-    // Read and clip voxel values (no clipping yet).
-    BaseLeaf::readBuffers(is, bbox, fromHalf);
-
-    mAttributeSet->read(is);
+    this->readBuffers(is, fromHalf);
 }
 
 template<typename T, Index Log2Dim>
 inline void
 PointDataLeafNode<T, Log2Dim>::writeBuffers(std::ostream& os, bool toHalf) const
 {
-    BaseLeaf::writeBuffers(os, toHalf);
+#ifdef OPENVDB_HAS_MULTIPLE_LEAF_BUFFERS
+    if (io::getDataCompression(os) & io::COMPRESS_MULTIPLE_LEAF_BUFFERS)
+    {
+        const io::StreamMetadata::Ptr meta = io::getStreamMetadataPtr(os);
 
+        if (!meta) {
+            OPENVDB_THROW(IoError, "Cannot write out a PointDataLeaf without StreamMetadata.");
+        }
+
+        const Index pass = meta->leafBuffer();
+
+        // leaf traversal analysis deduces the number of passes to perform for this leaf
+        // then updates the leaf traversal value to ensure all passes will be written
+
+        if (meta->leafBufferCount()) {
+            const Index requiredPasses = this->buffers();
+            if (requiredPasses > pass) {
+                meta->setLeafBuffer(requiredPasses);
+            }
+            return;
+        }
+
+        if (pass == 0) {
+            // pass 0 - voxel data
+            BaseLeaf::writeBuffers(os, toHalf);
+        }
+        else if (pass == 1) {
+            // pass 1 - descriptor and attribute metadata
+            mAttributeSet->writeMetadata(os);
+        }
+        else if (pass < this->buffers()) {
+            // pass 2...n+2 - attribute buffers
+            mAttributeSet->writeBuffers(os, pass - 2);
+        }
+
+        // pass is out of range for this leaf - ignored
+        return;
+    }
+#endif
+
+    BaseLeaf::writeBuffers(os, toHalf);
     mAttributeSet->write(os);
 }
 
