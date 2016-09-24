@@ -998,6 +998,8 @@ AttributeSet::Descriptor::parseNames(   std::vector<std::string>& includeNames,
 void
 AttributeSet::Descriptor::write(std::ostream& os) const
 {
+    return;
+
     const Index64 arraylength = Index64(mTypes.size());
     os.write(reinterpret_cast<const char*>(&arraylength), sizeof(Index64));
 

@@ -970,7 +970,7 @@ template<typename T, Index Log2Dim>
 inline void
 PointDataLeafNode<T, Log2Dim>::writeTopology(std::ostream& os, bool toHalf) const
 {
-    BaseLeaf::writeTopology(os, toHalf);
+    //BaseLeaf::writeTopology(os, toHalf);
 }
 
 template<typename T, Index Log2Dim>
@@ -1053,11 +1053,11 @@ PointDataLeafNode<T, Log2Dim>::writeBuffers(std::ostream& os, bool toHalf) const
 
         if (pass == 0) {
             // pass 0 - voxel data
-            BaseLeaf::writeBuffers(os, toHalf);
+            // BaseLeaf::writeBuffers(os, toHalf);
         }
         else if (pass == 1) {
             // pass 1 - descriptor and attribute metadata
-            mAttributeSet->writeMetadata(os);
+            // mAttributeSet->writeMetadata(os);
         }
         else if (pass < this->buffers()) {
             // pass 2...n+2 - attribute buffers
@@ -1069,7 +1069,7 @@ PointDataLeafNode<T, Log2Dim>::writeBuffers(std::ostream& os, bool toHalf) const
     }
 #endif
 
-    BaseLeaf::writeBuffers(os, toHalf);
+    // BaseLeaf::writeBuffers(os, toHalf);
     mAttributeSet->write(os);
 }
 

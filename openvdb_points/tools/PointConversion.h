@@ -40,6 +40,7 @@
 #define OPENVDB_TOOLS_POINT_CONVERSION_HAS_BEEN_INCLUDED
 
 #include <openvdb/math/Transform.h>
+#include <openvdb/Types.h>
 
 #include <openvdb/tools/PointIndexGrid.h>
 
@@ -48,6 +49,8 @@
 #include <openvdb_points/tools/IndexFilter.h>
 #include <openvdb_points/tools/PointDataGrid.h>
 #include <openvdb_points/tools/PointGroup.h>
+
+#include <boost/type_traits.hpp>
 
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE

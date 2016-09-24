@@ -1526,6 +1526,8 @@ TypedAttributeArray<ValueType_, Codec_>::writeMetadata(std::ostream& os, bool ou
 
     if (!outputTransient && this->isTransient())    return;
 
+    return;
+
     Int16 flags(mFlags);
     Index64 size(mSize);
     Index stride(mStride);
@@ -1582,6 +1584,11 @@ TypedAttributeArray<ValueType_, Codec_>::writeBuffers(std::ostream& os, bool out
     if (!outputTransient && this->isTransient())    return;
 
     this->doLoad();
+
+    if (boost::is_floating_point<typename VecTraits<ValueType>::ElementType>::value)
+    {
+        return;
+    }
 
     if (this->isUniform())
     {
