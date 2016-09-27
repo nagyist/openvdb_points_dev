@@ -1,0 +1,3 @@
+coverage:
+  ignore:
+    openvdb_points/unittest/*
