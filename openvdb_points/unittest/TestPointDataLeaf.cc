@@ -955,6 +955,7 @@ TestPointDataLeaf::testIO()
 
         std::ostringstream ostr(std::ios_base::binary);
         io::setStreamMetadataPtr(ostr, streamMetadata);
+        io::setDataCompression(ostr, io::getDataCompression(ostr) | io::COMPRESS_MULTIPLE_LEAF_BUFFERS);
         leaf.writeTopology(ostr);
 #ifdef OPENVDB_HAS_MULTIPLE_LEAF_BUFFERS
         for (Index b = 0; b < leaf.buffers(); b++) {
@@ -976,6 +977,7 @@ TestPointDataLeaf::testIO()
 
         std::istringstream istr(ostr.str(), std::ios_base::binary);
         io::setStreamMetadataPtr(istr, streamMetadata);
+        io::setDataCompression(ostr, io::getDataCompression(ostr) | io::COMPRESS_MULTIPLE_LEAF_BUFFERS);
 
         // Since the input stream doesn't include a VDB header with file format version info,
         // tag the input stream explicitly with the current version number.

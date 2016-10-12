@@ -47,6 +47,7 @@
 
 #include <openvdb/tools/PointIndexGrid.h>
 
+#include <openvdb_points/tools/Compression.h>
 #include <openvdb_points/tools/AttributeSet.h>
 #include <openvdb_points/tools/AttributeGroup.h>
 
@@ -58,6 +59,31 @@ class TestPointDataLeaf;
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
+
+namespace io
+{
+
+template<>
+inline void
+readCompressedValues(   std::istream& is, PointDataIndex32* destBuf, Index destCount,
+                        const util::NodeMask<3>& /*valueMask*/, bool /*fromHalf*/)
+{
+    BOOST_STATIC_ASSERT(sizeof(PointDataIndex32) == sizeof(Index32));
+    Index32* intBuf = reinterpret_cast<Index32*>(destBuf);
+    io::readCompressedIntegers(is, intBuf, destCount);
+}
+
+template<>
+inline void
+writeCompressedValues(  std::ostream& os, PointDataIndex32* srcBuf, Index srcCount,
+                        const util::NodeMask<3>& /*valueMask*/, const util::NodeMask<3>& /*childMask*/, bool /*toHalf*/)
+{
+    BOOST_STATIC_ASSERT(sizeof(PointDataIndex32) == sizeof(Index32));
+    Index32* intBuf = reinterpret_cast<Index32*>(srcBuf);
+    io::writeCompressedIntegers<Index32, /*analysis=*/false>(os, intBuf, srcCount);
+}
+
+} // namespace io
 
 // forward declaration
 namespace tree {
@@ -138,52 +164,60 @@ public:
     /// Default constructor
     PointDataLeafNode()
         : BaseLeaf()
-        , mAttributeSet(new AttributeSet) { }
+        , mAttributeSet(new AttributeSet)
+        , mBufferSize(0) { }
 
     ~PointDataLeafNode() { }
 
     /// Construct using deep copy of other PointDataLeafNode
     explicit PointDataLeafNode(const PointDataLeafNode& other)
         : BaseLeaf(other)
-        , mAttributeSet(new AttributeSet(*other.mAttributeSet)) { }
+        , mAttributeSet(new AttributeSet(*other.mAttributeSet))
+        , mBufferSize(0) { }
 
     /// Construct using supplied origin, value and active status
     explicit
     PointDataLeafNode(const Coord& coords, const T& value = zeroVal<T>(), bool active = false)
         : BaseLeaf(coords, value, active)
-        , mAttributeSet(new AttributeSet) { }
+        , mAttributeSet(new AttributeSet)
+        , mBufferSize(0) { }
 
     /// Construct using supplied origin, value and active status
     /// use attribute map from another PointDataLeafNode
     PointDataLeafNode(const PointDataLeafNode& other, const Coord& coords, const T& value = zeroVal<T>(), bool active = false)
         : BaseLeaf(coords, value, active)
-        , mAttributeSet(new AttributeSet(*other.mAttributeSet)) { }
+        , mAttributeSet(new AttributeSet(*other.mAttributeSet))
+        , mBufferSize(0) { }
 
     // Copy-construct from a PointIndexLeafNode with the same configuration but a different ValueType.
     template<typename OtherValueType>
     PointDataLeafNode(const tools::PointIndexLeafNode<OtherValueType, Log2Dim>& other)
         : BaseLeaf(other)
-        , mAttributeSet(new AttributeSet) { }
+        , mAttributeSet(new AttributeSet)
+        , mBufferSize(0) { }
 
     // Copy-construct from a LeafNode with the same configuration but a different ValueType.
     // Used for topology copies - explicitly sets the value (background) to zeroVal
     template <typename ValueType>
     PointDataLeafNode(const tree::LeafNode<ValueType, Log2Dim>& other, const T& /*value*/, TopologyCopy)
         : BaseLeaf(other, zeroVal<T>(), TopologyCopy())
-        , mAttributeSet(new AttributeSet) { }
+        , mAttributeSet(new AttributeSet)
+        , mBufferSize(0) { }
 
     // Copy-construct from a LeafNode with the same configuration but a different ValueType.
     // Used for topology copies - explicitly sets the on and off value (background) to zeroVal
     template <typename ValueType>
     PointDataLeafNode(const tree::LeafNode<ValueType, Log2Dim>& other, const T& /*offValue*/, const T& /*onValue*/, TopologyCopy)
         : BaseLeaf(other, zeroVal<T>(), zeroVal<T>(), TopologyCopy())
-        , mAttributeSet(new AttributeSet) { }
+        , mAttributeSet(new AttributeSet)
+        , mBufferSize(0) { }
 
 #ifndef OPENVDB_2_ABI_COMPATIBLE
     PointDataLeafNode(PartialCreate, const Coord& coords,
         const T& value = zeroVal<T>(), bool active = false)
         : BaseLeaf(PartialCreate(), coords, value, active)
-        , mAttributeSet(new AttributeSet) { }
+        , mAttributeSet(new AttributeSet)
+        , mBufferSize(0) { }
 #endif
 
 public:
@@ -432,6 +466,7 @@ public:
 
 private:
     point_data_grid_internal::UniquePtr<AttributeSet>::type mAttributeSet;
+    Index32 mBufferSize;
 
 protected:
     typedef typename BaseLeaf::ChildOn ChildOn;
@@ -983,7 +1018,8 @@ template<typename T, Index Log2Dim>
 inline Index
 PointDataLeafNode<T, Log2Dim>::buffers() const
 {
-    return Index(   /*voxel buffers*/               1 +
+    return Index(   /*voxel buffer sizes*/          1 +
+                    /*voxel buffers*/               1 +
                     /*attribute metadata*/          1 +
                     /*attribute uniform values*/    mAttributeSet->size() +
                     /*attribute buffers*/           mAttributeSet->size());
@@ -1003,24 +1039,30 @@ PointDataLeafNode<T, Log2Dim>::readBuffers(std::istream& is, bool fromHalf)
 
         const Index pass = meta->leafBuffer();
 
-        const Index attributes = (this->buffers() - 2) / 2;
+        const Index attributes = (this->buffers() - 3) / 2;
 
         if (pass == 0) {
-            // pass 0 - voxel data
-            BaseLeaf::readBuffers(is, fromHalf);
+            // pass 0 - voxel data size
+            size_t size;
+            is.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+            mBufferSize = Index32(size);
         }
         else if (pass == 1) {
-            // pass 1 - descriptor and attribute metadata
+            // pass 1 - voxel data
+            BaseLeaf::readBuffers(is, fromHalf);
+        }
+        else if (pass == 2) {
+            // pass 2 - descriptor and attribute metadata
             mAttributeSet->readMetadata(is);
         }
-        else if (pass < (attributes + 2)) {
-            // pass 2...n+2 - attribute uniform values
-            AttributeArray* array = mAttributeSet->get(size_t(pass - 2));
+        else if (pass < (attributes + 3)) {
+            // pass 3...n+3 - attribute uniform values
+            AttributeArray* array = mAttributeSet->get(size_t(pass - 3));
             if (array)  array->readUniform(is);
         }
         else if (pass < this->buffers()) {
-            // pass n+2...2n+2 - attribute buffers
-            AttributeArray* array = mAttributeSet->get(size_t(pass - attributes - 2));
+            // pass n+3...2n+3 - attribute buffers
+            AttributeArray* array = mAttributeSet->get(size_t(pass - attributes - 3));
             if (array)  array->readBuffers(is);
         }
         // pass is out of range for this leaf - ignored
@@ -1068,24 +1110,31 @@ PointDataLeafNode<T, Log2Dim>::writeBuffers(std::ostream& os, bool toHalf) const
             return;
         }
 
-        const Index attributes = (this->buffers() - 2) / 2;
+        const Index attributes = (this->buffers() - 3) / 2;
 
         if (pass == 0) {
-            // pass 0 - voxel data
-            BaseLeaf::writeBuffers(os, toHalf);
+            // pass 0 - voxel data size
+            // (for compatibility with desire to seek over voxel buffer in the future)
+            BOOST_STATIC_ASSERT(sizeof(PointDataIndex32) == sizeof(Index32));
+            const Index32* intBuf = reinterpret_cast<const Index32*>(this->buffer().data());
+            io::writeCompressedIntegers<Index32, /*analysis=*/true>(os, intBuf, SIZE);
         }
         else if (pass == 1) {
-            // pass 1 - descriptor and attribute metadata
+            // pass 1 - voxel data
+            BaseLeaf::writeBuffers(os, toHalf);
+        }
+        else if (pass == 2) {
+            // pass 2 - descriptor and attribute metadata
             mAttributeSet->writeMetadata(os);
         }
-        else if (pass < attributes + 2) {
-            // pass 2...n+2 - attribute uniform values
-            AttributeArray* array = mAttributeSet->get(size_t(pass - 2));
+        else if (pass < attributes + 3) {
+            // pass 3...n+3 - attribute uniform values
+            AttributeArray* array = mAttributeSet->get(size_t(pass - 3));
             if (array)  array->writeUniform(os, /*outputTransient*/false);
         }
         else if (pass < this->buffers()) {
-            // pass n+2...2n+2 - attribute buffers
-            AttributeArray* array = mAttributeSet->get(size_t(pass - attributes - 2));
+            // pass n+3...2n+3 - attribute buffers
+            AttributeArray* array = mAttributeSet->get(size_t(pass - attributes - 3));
             if (array)  array->writeBuffers(os, /*outputTransient*/false);
         }
 
