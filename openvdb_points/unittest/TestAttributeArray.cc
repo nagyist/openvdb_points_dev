@@ -32,6 +32,7 @@
 #include <cppunit/extensions/HelperMacros.h>
 #include <openvdb_points/tools/AttributeArray.h>
 #include <openvdb_points/tools/AttributeSet.h>
+#include <openvdb_points/tools/Compression.h>
 #include <openvdb/Types.h>
 #include <openvdb/math/Transform.h>
 #include <openvdb/io/File.h>
@@ -110,7 +111,8 @@ class TestAttributeArray: public CppUnit::TestCase
 public:
     CPPUNIT_TEST_SUITE(TestAttributeArray);
     CPPUNIT_TEST(testFixedPointConversion);
-    CPPUNIT_TEST(testCompression);
+    CPPUNIT_TEST(testIntegerCompression);
+    CPPUNIT_TEST(testBloscCompression);
     CPPUNIT_TEST(testRegistry);
     CPPUNIT_TEST(testAttributeArray);
     CPPUNIT_TEST(testAccessorEval);
@@ -124,7 +126,8 @@ public:
     CPPUNIT_TEST_SUITE_END();
 
     void testFixedPointConversion();
-    void testCompression();
+    void testIntegerCompression();
+    void testBloscCompression();
     void testRegistry();
     void testAttributeArray();
     void testAccessorEval();
@@ -257,7 +260,277 @@ TestAttributeArray::testRegistry()
 }
 
 void
-TestAttributeArray::testCompression()
+TestAttributeArray::testIntegerCompression()
+{
+    // unsigned integer tests
+
+    { // uint8_t
+        std::vector<uint8_t> values;
+        values.reserve(256);
+
+        const uint8_t max = std::numeric_limits<uint8_t>::max();
+        for (uint8_t i = 0; i < max; i++)                                   values.push_back(uint8_t(i));     // 0 -> 256
+        std::random_shuffle(values.begin(), values.end());
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<uint8_t, true>(ss, (uint8_t*)&values[0], values.size());
+        io::writeCompressedIntegers<uint8_t, false>(ss, (uint8_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<uint8_t> newUncompressedBuffer(new uint8_t[values.size()]);
+        io::readCompressedIntegers<uint8_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // uint16_t
+        std::vector<uint16_t> values;
+        values.reserve(2000);
+
+        const uint16_t max = std::numeric_limits<uint16_t>::max();
+        for (uint16_t i = 0; i < 1000; i++)                           values.push_back(i);      // 0 -> 1000
+        for (uint16_t i = max - 1000; i < max; i++)                   values.push_back(i);      // up to USHRT_MAX
+        std::random_shuffle(values.begin(), values.end());
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<uint16_t, true>(ss, (uint16_t*)&values[0], values.size());
+        io::writeCompressedIntegers<uint16_t, false>(ss, (uint16_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<uint16_t> newUncompressedBuffer(new uint16_t[values.size()]);
+        io::readCompressedIntegers<uint16_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // uint32_t
+        std::vector<uint32_t> values;
+        values.reserve(4000);
+
+        const uint32_t max = std::numeric_limits<uint32_t>::max();
+        for (uint32_t i = 0; i < 1000; i++)                             values.push_back(i);        // 0 -> 1000
+        for (uint32_t i = 65000; i < 66000; i++)                        values.push_back(i);        // (2^16 == 65536)
+        for (uint32_t i = 16777000; i < 16778000; i++)                  values.push_back(i);        // (2^24 = 16777216)
+        for (uint32_t i = max - 1000; i < max; i++)                     values.push_back(i);        // up to UINT_MAX
+        std::random_shuffle(values.begin(), values.end());
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<uint32_t, true>(ss, (uint32_t*)&values[0], values.size());
+        io::writeCompressedIntegers<uint32_t, false>(ss, (uint32_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<uint32_t> newUncompressedBuffer(new uint32_t[values.size()]);
+        io::readCompressedIntegers<uint32_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // uint64_t
+        std::vector<uint64_t> values;
+        values.reserve(6000);
+
+        const uint64_t max = std::numeric_limits<uint64_t>::max();
+        for (uint64_t i = 0; i < 1000; i++)                            values.push_back(i);    // 0 -> 1000
+        for (uint64_t i = 65000; i < 66000; i++)                       values.push_back(i);    // (2^16 == 65536)
+        for (uint64_t i = 16777000; i < 16778000; i++)                 values.push_back(i);    // (2^24 = 16777216)
+        for (uint64_t i = 4294967000; i < 4294968000; i++)             values.push_back(i);    // (2^32 = 4294967296)
+        for (uint64_t i = 281474976710000; i < 281474976711000; i++)   values.push_back(i);    // (2^48 = 281474976710656)
+        for (uint64_t i = max - 1000; i < max; i++)                    values.push_back(i);    // up to ULONG_MAX
+        std::random_shuffle(values.begin(), values.end());
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<uint64_t, true>(ss, (uint64_t*)&values[0], values.size());
+        io::writeCompressedIntegers<uint64_t, false>(ss, (uint64_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<uint64_t> newUncompressedBuffer(new uint64_t[values.size()]);
+        io::readCompressedIntegers<uint64_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // int8_t
+        std::vector<int8_t> values;
+        values.reserve(256);
+
+        const int8_t max = std::numeric_limits<int8_t>::max();
+        for (int8_t i = -max; i < max; i++)                                 values.push_back(i);     // -127 -> 127
+        values.push_back(int8_t(-0));
+        std::random_shuffle(values.begin(), values.end());
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<int8_t, true>(ss, (int8_t*)&values[0], values.size());
+        io::writeCompressedIntegers<int8_t, false>(ss, (int8_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<int8_t> newUncompressedBuffer(new int8_t[values.size()]);
+        io::readCompressedIntegers<int8_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // int16_t
+        std::vector<int16_t> values;
+        values.reserve(3000);
+
+        const int16_t max = std::numeric_limits<int16_t>::max();
+        for (int16_t i = -max; i < -max + 1000; i++)                 values.push_back(i);      // up to -USHRT_MAX
+        for (int16_t i = -500; i < 500; i++)                         values.push_back(i);      // -500 -> 500
+        for (int16_t i = max - 1000; i < max; i++)                   values.push_back(i);      // up to USHRT_MAX
+        values.push_back(int16_t(-0));
+        std::random_shuffle(values.begin(), values.end());
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<int16_t, true>(ss, (int16_t*)&values[0], values.size());
+        io::writeCompressedIntegers<int16_t, false>(ss, (int16_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<int16_t> newUncompressedBuffer(new int16_t[values.size()]);
+        io::readCompressedIntegers<int16_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // int32_t
+        std::vector<int32_t> values;
+        values.reserve(7000);
+
+        const int32_t max = std::numeric_limits<int32_t>::max();
+        for (int32_t i = -max; i < -max + 1000; i++)                   values.push_back(i);        // up to -UINT_MAX
+        for (int32_t i = -8389000; i < -8388000; i++)                  values.push_back(i);        // (-2^23 = -8388608)
+        for (int32_t i = -33000; i < -32000; i++)                      values.push_back(i);        // (-2^15 == -32767)
+        for (int32_t i = -500; i < 500; i++)                           values.push_back(i);        // 0 -> 1000
+        for (int32_t i = 32000; i < 33000; i++)                        values.push_back(i);        // (2^15 == 32767)
+        for (int32_t i = 8388000; i < 8389000; i++)                    values.push_back(i);        // (2^23 = 8388608)
+        for (int32_t i = max - 1000; i < max; i++)                     values.push_back(i);        // up to UINT_MAX
+        values.push_back(int32_t(-0));
+        std::random_shuffle(values.begin(), values.end());
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<int32_t, true>(ss, (int32_t*)&values[0], values.size());
+        io::writeCompressedIntegers<int32_t, false>(ss, (int32_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<int32_t> newUncompressedBuffer(new int32_t[values.size()]);
+        io::readCompressedIntegers<int32_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // int64_t
+        std::vector<int64_t> values;
+        values.reserve(11000);
+
+        const int64_t max = std::numeric_limits<int64_t>::max();
+        for (int64_t i = -max; i < -max + 1000; i++)                   values.push_back(i);        // up to -ULONG_MAX
+        for (int64_t i = -140737488356000; i < -140737488355000; i++)  values.push_back(i);        // (-2^47 = -140737488355328)
+        for (int64_t i = -2147484000; i < -2147483000; i++)            values.push_back(i);        // (-2^31 = -2147483648)
+        for (int64_t i = -8389000; i < -8388000; i++)                  values.push_back(i);        // (-2^23 = -8388608)
+        for (int64_t i = -33000; i < -32000; i++)                      values.push_back(i);        // (-2^15 == -32767)
+        for (int64_t i = -500; i < 500; i++)                           values.push_back(i);        // 0 -> 1000
+        for (int64_t i = 32000; i < 33000; i++)                        values.push_back(i);        // (2^15 == 32767)
+        for (int64_t i = 8388000; i < 8389000; i++)                    values.push_back(i);        // (2^23 = 8388608)
+        for (int64_t i = 2147483000; i < 2147484000; i++)              values.push_back(i);        // (2^31 = 2147483648)
+        for (int64_t i = 140737488355000; i < 140737488356000; i++)    values.push_back(i);        // (2^47 = 140737488355328)
+        for (int64_t i = max - 1000; i < max; i++)                     values.push_back(i);        // up to ULONG_MAX
+        values.push_back(int64_t(-0));
+        std::random_shuffle(values.begin(), values.end());
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<int64_t, true>(ss, (int64_t*)&values[0], values.size());
+        io::writeCompressedIntegers<int64_t, false>(ss, (int64_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<int64_t> newUncompressedBuffer(new int64_t[values.size()]);
+        io::readCompressedIntegers<int64_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // uint32_t (ascending)
+        std::vector<uint32_t> values;
+        values.reserve(4000);
+
+        for (uint32_t i = 0; i < 4000; i++)                              values.push_back(i);        // 0 -> 4000
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<uint32_t, true>(ss, (uint32_t*)&values[0], values.size());
+        io::writeCompressedIntegers<uint32_t, false>(ss, (uint32_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<uint32_t> newUncompressedBuffer(new uint32_t[values.size()]);
+        io::readCompressedIntegers<uint32_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // uint32_t (repeated)
+        std::vector<uint64_t> values;
+        values.reserve(4000);
+
+        for (uint64_t i = 0; i < 4000; i++)                              values.push_back(i / 100);        // 0 -> 4000
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<uint64_t, true>(ss, (uint64_t*)&values[0], values.size());
+        io::writeCompressedIntegers<uint64_t, false>(ss, (uint64_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<uint64_t> newUncompressedBuffer(new uint64_t[values.size()]);
+        io::readCompressedIntegers<uint64_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // uint32_t (repeated, alternate)
+        std::vector<uint64_t> values;
+        values.reserve(4000);
+
+        for (uint64_t i = 0; i < 4000; i++)                              values.push_back(i / 100 + (1UL << 40));        // 0 -> 4000
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<uint64_t, true>(ss, (uint64_t*)&values[0], values.size());
+        io::writeCompressedIntegers<uint64_t, false>(ss, (uint64_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<uint64_t> newUncompressedBuffer(new uint64_t[values.size()]);
+        io::readCompressedIntegers<uint64_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+
+    { // uint32_t (ascending)
+        std::vector<uint32_t> values;
+        values.reserve(4000);
+
+        for (uint32_t i = 0; i < 4000; i++)                              values.push_back(i + ((i % 2) == 0) + (1UL << 28));        // 0 -> 4000
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<uint32_t, true>(ss, (uint32_t*)&values[0], values.size());
+        io::writeCompressedIntegers<uint32_t, false>(ss, (uint32_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<uint32_t> newUncompressedBuffer(new uint32_t[values.size()]);
+        io::readCompressedIntegers<uint32_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
+}
+
+
+void
+TestAttributeArray::testBloscCompression()
 {
     using namespace attribute_compression;
 
