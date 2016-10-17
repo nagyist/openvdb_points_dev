@@ -36,17 +36,17 @@
 ///
 
 
-#ifndef OPENVDB_TOOLS_ATTRIBUTE_ARRAY_HAS_BEEN_INCLUDED
-#define OPENVDB_TOOLS_ATTRIBUTE_ARRAY_HAS_BEEN_INCLUDED
+#ifndef OPENVDB_POINTS_ATTRIBUTE_ARRAY_HAS_BEEN_INCLUDED
+#define OPENVDB_POINTS_ATTRIBUTE_ARRAY_HAS_BEEN_INCLUDED
 
-#include <openvdb_points/Types.h>
+#include <openvdb/TypesPoints.h>
 #include <openvdb/math/QuantizedUnitVec.h>
 #include <openvdb/util/Name.h>
 #include <openvdb/util/logging.h>
 #include <openvdb/io/io.h> // MappedFile
 #include <openvdb/io/Compression.h> // COMPRESS_BLOSC
 
-#include <openvdb_points/tools/IndexIterator.h>
+#include <openvdb/points/IndexIterator.h>
 
 #include <tbb/spin_mutex.h>
 #include <tbb/atomic.h>
@@ -66,7 +66,7 @@ namespace OPENVDB_VERSION_NAME {
 // Add new typedef for a Name pair
 typedef std::pair<Name, Name> NamePair;
 
-namespace tools {
+namespace points {
 
 
 ////////////////////////////////////////
@@ -1846,13 +1846,13 @@ AttributeWriteHandle<ValueType, CodecType, Strided, Interleaved>::set(Index inde
 }
 
 
-} // namespace tools
+} // namespace points
 
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 
 
-#endif // OPENVDB_TOOLS_ATTRIBUTE_ARRAY_HAS_BEEN_INCLUDED
+#endif // OPENVDB_POINTS_ATTRIBUTE_ARRAY_HAS_BEEN_INCLUDED
 
 
 // Copyright (c) 2015-2016 Double Negative Visual Effects

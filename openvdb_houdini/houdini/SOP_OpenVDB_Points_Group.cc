@@ -35,12 +35,12 @@
 /// @brief Add and remove point groups.
 
 
-#include <openvdb_points/openvdb.h>
-#include <openvdb_points/tools/PointDataGrid.h>
-#include <openvdb_points/tools/PointGroup.h>
+#include <openvdb/openvdbPoints.h>
+#include <openvdb/points/PointDataGrid.h>
+#include <openvdb/points/PointGroup.h>
 
 #include "SOP_NodeVDBPoints.h"
-#include "Utils.h"
+#include "PointUtils.h"
 
 #include <openvdb_houdini/Utils.h>
 #include <houdini_utils/geometry.h>

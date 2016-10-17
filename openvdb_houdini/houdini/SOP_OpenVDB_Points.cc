@@ -35,14 +35,14 @@
 /// @brief Converts points to OpenVDB points.
 
 
-#include <openvdb_points/openvdb.h>
-#include <openvdb_points/tools/AttributeArrayString.h>
-#include <openvdb_points/tools/PointDataGrid.h>
-#include <openvdb_points/tools/PointAttribute.h>
-#include <openvdb_points/tools/PointConversion.h>
-#include <openvdb_points/tools/PointGroup.h>
+#include <openvdb/openvdbPoints.h>
+#include <openvdb/points/AttributeArrayString.h>
+#include <openvdb/points/PointDataGrid.h>
+#include <openvdb/points/PointAttribute.h>
+#include <openvdb/points/PointConversion.h>
+#include <openvdb/points/PointGroup.h>
 
-#include "Utils.h"
+#include "PointUtils.h"
 #include "SOP_NodeVDBPoints.h"
 
 #include <houdini_utils/geometry.h>

@@ -36,21 +36,21 @@
 ///
 
 
-#ifndef OPENVDB_TOOLS_POINT_ATTRIBUTE_HAS_BEEN_INCLUDED
-#define OPENVDB_TOOLS_POINT_ATTRIBUTE_HAS_BEEN_INCLUDED
+#ifndef OPENVDB_POINTS_POINT_ATTRIBUTE_HAS_BEEN_INCLUDED
+#define OPENVDB_POINTS_POINT_ATTRIBUTE_HAS_BEEN_INCLUDED
 
 #include <openvdb/openvdb.h>
 
-#include <openvdb_points/tools/AttributeArrayString.h>
-#include <openvdb_points/tools/AttributeSet.h>
-#include <openvdb_points/tools/AttributeGroup.h>
-#include <openvdb_points/tools/PointDataGrid.h>
+#include <openvdb/points/AttributeArrayString.h>
+#include <openvdb/points/AttributeSet.h>
+#include <openvdb/points/AttributeGroup.h>
+#include <openvdb/points/PointDataGrid.h>
 
 
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
-namespace tools {
+namespace points {
 
 /// @brief Appends a new attribute to the VDB tree.
 ///
@@ -652,12 +652,12 @@ inline void bloscCompressAttribute( PointDataTree& tree,
 ////////////////////////////////////////
 
 
-} // namespace tools
+} // namespace points
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 
 
-#endif // OPENVDB_TOOLS_POINT_ATTRIBUTE_HAS_BEEN_INCLUDED
+#endif // OPENVDB_POINTS_POINT_ATTRIBUTE_HAS_BEEN_INCLUDED
 
 
 // Copyright (c) 2015-2016 Double Negative Visual Effects

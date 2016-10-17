@@ -36,23 +36,23 @@
 ///
 
 
-#ifndef OPENVDB_TOOLS_POINT_CONVERSION_HAS_BEEN_INCLUDED
-#define OPENVDB_TOOLS_POINT_CONVERSION_HAS_BEEN_INCLUDED
+#ifndef OPENVDB_POINTS_POINT_CONVERSION_HAS_BEEN_INCLUDED
+#define OPENVDB_POINTS_POINT_CONVERSION_HAS_BEEN_INCLUDED
 
 #include <openvdb/math/Transform.h>
 
 #include <openvdb/tools/PointIndexGrid.h>
 
-#include <openvdb_points/tools/AttributeArrayString.h>
-#include <openvdb_points/tools/AttributeSet.h>
-#include <openvdb_points/tools/IndexFilter.h>
-#include <openvdb_points/tools/PointDataGrid.h>
-#include <openvdb_points/tools/PointGroup.h>
+#include <openvdb/points/AttributeArrayString.h>
+#include <openvdb/points/AttributeSet.h>
+#include <openvdb/points/IndexFilter.h>
+#include <openvdb/points/PointDataGrid.h>
+#include <openvdb/points/PointGroup.h>
 
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
-namespace tools {
+namespace points {
 
 
 /// @brief  Localises points with position into a @c PointDataGrid into two stages:
@@ -980,12 +980,12 @@ convertPointDataGridGroup(  Group& group,
 }
 
 
-} // namespace tools
+} // namespace points
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 
 
-#endif // OPENVDB_TOOLS_POINT_CONVERSION_HAS_BEEN_INCLUDED
+#endif // OPENVDB_POINTS_POINT_CONVERSION_HAS_BEEN_INCLUDED
 
 
 // Copyright (c) 2015-2016 Double Negative Visual Effects

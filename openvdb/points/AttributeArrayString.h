@@ -36,16 +36,16 @@
 ///
 
 
-#ifndef OPENVDB_TOOLS_ATTRIBUTE_ARRAY_STRING_HAS_BEEN_INCLUDED
-#define OPENVDB_TOOLS_ATTRIBUTE_ARRAY_STRING_HAS_BEEN_INCLUDED
+#ifndef OPENVDB_POINTS_ATTRIBUTE_ARRAY_STRING_HAS_BEEN_INCLUDED
+#define OPENVDB_POINTS_ATTRIBUTE_ARRAY_STRING_HAS_BEEN_INCLUDED
 
-#include <openvdb_points/tools/AttributeArray.h>
+#include <openvdb/points/AttributeArray.h>
 
 
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
-namespace tools {
+namespace points {
 
 
 ////////////////////////////////////////
@@ -208,13 +208,13 @@ private:
 ////////////////////////////////////////
 
 
-} // namespace tools
+} // namespace points
 
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 
 
-#endif // OPENVDB_TOOLS_ATTRIBUTE_ARRAY_STRING_HAS_BEEN_INCLUDED
+#endif // OPENVDB_POINTS_ATTRIBUTE_ARRAY_STRING_HAS_BEEN_INCLUDED
 
 
 // Copyright (c) 2015-2016 Double Negative Visual Effects

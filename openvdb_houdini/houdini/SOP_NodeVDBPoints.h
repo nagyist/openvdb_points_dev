@@ -40,9 +40,9 @@
 
 #include <openvdb/openvdb.h>
 #include <openvdb/Platform.h>
-#include <openvdb_points/tools/AttributeArrayString.h>
-#include <openvdb_points/tools/PointDataGrid.h>
-#include <openvdb_points/tools/PointCount.h>
+#include <openvdb/points/AttributeArrayString.h>
+#include <openvdb/points/PointDataGrid.h>
+#include <openvdb/points/PointCount.h>
 
 #include <openvdb_houdini/SOP_NodeVDB.h>
 #include <openvdb_houdini/Utils.h>

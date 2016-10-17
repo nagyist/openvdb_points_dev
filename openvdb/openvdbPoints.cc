@@ -30,10 +30,10 @@
 
 #include "openvdb.h"
 
-#include <openvdb_points/tools/AttributeArray.h>
-#include <openvdb_points/tools/AttributeArrayString.h>
-#include <openvdb_points/tools/AttributeGroup.h>
-#include <openvdb_points/tools/PointDataGrid.h>
+#include <openvdb/points/AttributeArray.h>
+#include <openvdb/points/AttributeArrayString.h>
+#include <openvdb/points/AttributeGroup.h>
+#include <openvdb/points/PointDataGrid.h>
 
 #include <tbb/mutex.h>
 

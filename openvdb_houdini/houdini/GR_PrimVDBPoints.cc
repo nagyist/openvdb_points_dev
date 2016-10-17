@@ -41,9 +41,9 @@
 #include <openvdb/Grid.h>
 #include <openvdb/Platform.h>
 #include <openvdb/Types.h>
-#include <openvdb_points/tools/PointDataGrid.h>
-#include <openvdb_points/tools/PointCount.h>
-#include <openvdb_points/tools/PointConversion.h>
+#include <openvdb/points/PointDataGrid.h>
+#include <openvdb/points/PointCount.h>
+#include <openvdb/points/PointConversion.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 

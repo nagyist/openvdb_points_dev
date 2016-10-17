@@ -34,7 +34,7 @@
 
 #include <map>
 
-#include <openvdb_points/tools/AttributeArray.h>
+#include <openvdb/points/AttributeArray.h>
 
 #ifdef OPENVDB_USE_BLOSC
 #include <blosc.h>
@@ -43,7 +43,7 @@
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
-namespace tools {
+namespace points {
 
 ////////////////////////////////////////
 
@@ -379,7 +379,7 @@ AttributeArray::operator==(const AttributeArray& other) const {
 
 
 
-} // namespace tools
+} // namespace points
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 

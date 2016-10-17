@@ -44,11 +44,11 @@
 #include <openvdb/openvdb.h>
 #include <openvdb/io/File.h>
 
-#include <openvdb_points/openvdb.h>
-#include <openvdb_points/tools/PointDataGrid.h>
-#include <openvdb_points/tools/PointGroup.h>
+#include <openvdb/openvdbPoints.h>
+#include <openvdb/points/PointDataGrid.h>
+#include <openvdb/points/PointGroup.h>
 
-#include "Utils.h"
+#include "PointUtils.h"
 
 using namespace openvdb;
 

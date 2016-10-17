@@ -38,11 +38,11 @@
 #define OPENVDB_HOUDINI_POINT_UTILS_HAS_BEEN_INCLUDED
 
 
-#include <openvdb_points/tools/AttributeArrayString.h>
+#include <openvdb/points/AttributeArrayString.h>
 #include <openvdb/math/Vec3.h>
 #include <openvdb/Types.h>
-#include <openvdb_points/tools/PointCount.h>
-#include <openvdb_points/tools/PointConversion.h>
+#include <openvdb/points/PointCount.h>
+#include <openvdb/points/PointConversion.h>
 
 #include <boost/algorithm/string/predicate.hpp> // startswith
 
@@ -54,7 +54,7 @@
 #include <GA/GA_Iterator.h>
 
 
-namespace openvdb_points_houdini {
+namespace openvdb_houdini {
 
 
 typedef std::vector<GA_Offset> OffsetList;
@@ -546,7 +546,7 @@ convertPointDataGridToHoudini(GU_Detail& detail,
     }
 }
 
-} // namespace openvdb_points_houdini
+} // namespace openvdb_houdini
 
 #endif // OPENVDB_HOUDINI_POINT_UTILS_HAS_BEEN_INCLUDED
 

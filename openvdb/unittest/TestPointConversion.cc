@@ -31,12 +31,12 @@
 
 #include <cppunit/extensions/HelperMacros.h>
 
-#include <openvdb_points/tools/PointDataGrid.h>
-#include <openvdb_points/tools/PointAttribute.h>
-#include <openvdb_points/tools/PointConversion.h>
-#include <openvdb_points/tools/PointCount.h>
-#include <openvdb_points/tools/PointGroup.h>
-#include <openvdb_points/openvdb.h>
+#include <openvdb/points/PointDataGrid.h>
+#include <openvdb/points/PointAttribute.h>
+#include <openvdb/points/PointConversion.h>
+#include <openvdb/points/PointCount.h>
+#include <openvdb/points/PointGroup.h>
+#include <openvdb/openvdbPoints.h>
 
 using namespace openvdb;
 using namespace openvdb::tools;

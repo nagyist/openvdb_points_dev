@@ -35,9 +35,9 @@
 /// @brief Explicitly loads OpenVDB points that are delay-loaded.
 
 
-#include <openvdb_points/openvdb.h>
-#include <openvdb_points/tools/PointDataGrid.h>
-#include <openvdb_points/tools/PointLoad.h>
+#include <openvdb/openvdbPoints.h>
+#include <openvdb/points/PointDataGrid.h>
+#include <openvdb/points/PointLoad.h>
 
 #include <openvdb/tools/LevelSetUtil.h> // sdfInteriorMask
 

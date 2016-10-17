@@ -30,10 +30,10 @@
 
 
 #include <cppunit/extensions/HelperMacros.h>
-#include <openvdb_points/tools/PointGroup.h>
-#include <openvdb_points/tools/PointCount.h>
-#include <openvdb_points/tools/PointConversion.h>
-#include <openvdb_points/openvdb.h>
+#include <openvdb/points/PointGroup.h>
+#include <openvdb/points/PointCount.h>
+#include <openvdb/points/PointConversion.h>
+#include <openvdb/openvdbPoints.h>
 
 #include <iostream>
 #include <sstream>

@@ -38,8 +38,8 @@
 ///
 
 
-#ifndef OPENVDB_TOOLS_POINT_DATA_GRID_HAS_BEEN_INCLUDED
-#define OPENVDB_TOOLS_POINT_DATA_GRID_HAS_BEEN_INCLUDED
+#ifndef OPENVDB_POINTS_POINT_DATA_GRID_HAS_BEEN_INCLUDED
+#define OPENVDB_POINTS_POINT_DATA_GRID_HAS_BEEN_INCLUDED
 
 #include <openvdb/Grid.h>
 #include <openvdb/tree/Tree.h>
@@ -47,8 +47,8 @@
 
 #include <openvdb/tools/PointIndexGrid.h>
 
-#include <openvdb_points/tools/AttributeSet.h>
-#include <openvdb_points/tools/AttributeGroup.h>
+#include <openvdb/points/AttributeSet.h>
+#include <openvdb/points/AttributeGroup.h>
 
 #include <utility> // std::pair, std::make_pair
 
@@ -68,7 +68,7 @@ namespace tree {
 ////////////////////////////////////////
 
 
-namespace tools {
+namespace points {
 
 
 // forward declaration
@@ -1031,7 +1031,7 @@ makeDescriptorUnique(PointDataTreeT& tree)
 }
 
 
-} // namespace tools
+} // namespace points
 
 ////////////////////////////////////////
 
@@ -1048,7 +1048,7 @@ struct SameLeafConfig<Dim1, tools::PointDataLeafNode<T2, Dim1> > { static const 
 } // namespace openvdb
 
 
-#endif // OPENVDB_TOOLS_POINT_DATA_GRID_HAS_BEEN_INCLUDED
+#endif // OPENVDB_POINTS_POINT_DATA_GRID_HAS_BEEN_INCLUDED
 
 
 // Copyright (c) 2015-2016 Double Negative Visual Effects

@@ -34,8 +34,8 @@
 
 #include <boost/algorithm/string/predicate.hpp> // for boost::starts_with()
 
-#include <openvdb_points/tools/AttributeGroup.h>
-#include <openvdb_points/tools/AttributeSet.h>
+#include <openvdb/points/AttributeGroup.h>
+#include <openvdb/points/AttributeSet.h>
 
 #include <algorithm> // std::equal
 #include <string>
@@ -45,7 +45,7 @@
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
-namespace tools {
+namespace points {
 
 
 namespace {
@@ -1047,7 +1047,7 @@ AttributeSet::Descriptor::read(std::istream& is)
 ////////////////////////////////////////
 
 
-} // namespace tools
+} // namespace points
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 

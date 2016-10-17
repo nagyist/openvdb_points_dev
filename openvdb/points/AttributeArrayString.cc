@@ -33,7 +33,7 @@
 /// @authors Dan Bailey
 
 
-#include <openvdb_points/tools/AttributeArrayString.h>
+#include <openvdb/points/AttributeArrayString.h>
 
 #include <openvdb/Metadata.h>
 #include <openvdb/MetaMap.h>
@@ -45,7 +45,7 @@
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
-namespace tools {
+namespace points {
 
 
 namespace {
@@ -321,7 +321,7 @@ Index StringAttributeWriteHandle::getIndex(const Name& name)
 ////////////////////////////////////////
 
 
-} // namespace tools
+} // namespace points
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 

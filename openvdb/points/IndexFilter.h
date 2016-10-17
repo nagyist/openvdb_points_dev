@@ -36,8 +36,8 @@
 ///
 
 
-#ifndef OPENVDB_TOOLS_INDEX_FILTER_HAS_BEEN_INCLUDED
-#define OPENVDB_TOOLS_INDEX_FILTER_HAS_BEEN_INCLUDED
+#ifndef OPENVDB_POINTS_INDEX_FILTER_HAS_BEEN_INCLUDED
+#define OPENVDB_POINTS_INDEX_FILTER_HAS_BEEN_INCLUDED
 
 #include <random> // std::mt19937
 
@@ -47,9 +47,9 @@
 #include <openvdb/math/Transform.h>
 #include <openvdb/tools/Interpolation.h>
 
-#include <openvdb_points/tools/IndexIterator.h>
-#include <openvdb_points/tools/AttributeArray.h>
-#include <openvdb_points/tools/AttributeGroup.h>
+#include <openvdb/points/IndexIterator.h>
+#include <openvdb/points/AttributeArray.h>
+#include <openvdb/points/AttributeGroup.h>
 
 #include <boost/ptr_container/ptr_vector.hpp>
 
@@ -58,7 +58,7 @@ class TestIndexFilter;
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
-namespace tools {
+namespace points {
 
 
 ////////////////////////////////////////
@@ -485,12 +485,12 @@ struct FilterTraits<BinaryFilter<T0, T1, And> > {
 ////////////////////////////////////////
 
 
-} // namespace tools
+} // namespace points
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 
 
-#endif // OPENVDB_TOOLS_INDEX_FILTER_HAS_BEEN_INCLUDED
+#endif // OPENVDB_POINTS_INDEX_FILTER_HAS_BEEN_INCLUDED
 
 
 // Copyright (c) 2015-2016 Double Negative Visual Effects

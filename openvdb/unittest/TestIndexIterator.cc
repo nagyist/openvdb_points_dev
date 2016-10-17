@@ -30,7 +30,7 @@
 
 
 #include <cppunit/extensions/HelperMacros.h>
-#include <openvdb_points/tools/IndexIterator.h>
+#include <openvdb/points/IndexIterator.h>
 
 #include <openvdb/Types.h>
 #include <openvdb/tree/LeafNode.h>

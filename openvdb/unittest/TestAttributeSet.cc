@@ -30,9 +30,9 @@
 
 
 #include <cppunit/extensions/HelperMacros.h>
-#include <openvdb_points/tools/AttributeGroup.h>
-#include <openvdb_points/tools/AttributeSet.h>
-#include <openvdb_points/openvdb.h>
+#include <openvdb/points/AttributeGroup.h>
+#include <openvdb/points/AttributeSet.h>
+#include <openvdb/openvdbPoints.h>
 #include <openvdb/openvdb.h>
 #include <openvdb/Types.h>
 #include <openvdb/Metadata.h>

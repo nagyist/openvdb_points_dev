@@ -30,12 +30,12 @@
 
 
 #include <cppunit/extensions/HelperMacros.h>
-#include <openvdb_points/tools/AttributeArray.h>
-#include <openvdb_points/tools/AttributeGroup.h>
-#include <openvdb_points/tools/IndexIterator.h>
-#include <openvdb_points/tools/IndexFilter.h>
+#include <openvdb/points/AttributeArray.h>
+#include <openvdb/points/AttributeGroup.h>
+#include <openvdb/points/IndexIterator.h>
+#include <openvdb/points/IndexFilter.h>
 
-#include <openvdb_points/openvdb.h>
+#include <openvdb/openvdbPoints.h>
 #include <openvdb/openvdb.h>
 
 #include <iostream>

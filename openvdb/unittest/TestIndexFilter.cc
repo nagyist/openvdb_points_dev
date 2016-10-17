@@ -30,12 +30,12 @@
 
 
 #include <cppunit/extensions/HelperMacros.h>
-#include <openvdb_points/tools/IndexIterator.h>
-#include <openvdb_points/tools/IndexFilter.h>
-#include <openvdb_points/tools/PointAttribute.h>
-#include <openvdb_points/tools/PointConversion.h>
-#include <openvdb_points/tools/PointGroup.h>
-#include <openvdb_points/tools/PointCount.h>
+#include <openvdb/points/IndexIterator.h>
+#include <openvdb/points/IndexFilter.h>
+#include <openvdb/points/PointAttribute.h>
+#include <openvdb/points/PointConversion.h>
+#include <openvdb/points/PointGroup.h>
+#include <openvdb/points/PointCount.h>
 
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/assign/std/vector.hpp> // until C++11

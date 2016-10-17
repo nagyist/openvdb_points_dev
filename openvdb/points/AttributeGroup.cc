@@ -33,13 +33,13 @@
 /// @authors Dan Bailey
 
 
-#include <openvdb_points/tools/AttributeGroup.h>
+#include <openvdb/points/AttributeGroup.h>
 
 
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
-namespace tools {
+namespace points {
 
 
 ////////////////////////////////////////
@@ -125,7 +125,7 @@ bool GroupWriteHandle::compact()
 ////////////////////////////////////////
 
 
-} // namespace tools
+} // namespace points
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 

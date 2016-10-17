@@ -36,8 +36,8 @@
 ///
 
 
-#ifndef OPENVDB_TOOLS_ATTRIBUTE_SET_HAS_BEEN_INCLUDED
-#define OPENVDB_TOOLS_ATTRIBUTE_SET_HAS_BEEN_INCLUDED
+#ifndef OPENVDB_POINTS_ATTRIBUTE_SET_HAS_BEEN_INCLUDED
+#define OPENVDB_POINTS_ATTRIBUTE_SET_HAS_BEEN_INCLUDED
 
 #include <openvdb/version.h>
 #include <openvdb/MetaMap.h>
@@ -47,7 +47,7 @@
 #include <vector>
 #include <cctype> // isalnum
 
-#include <openvdb_points/tools/AttributeArray.h>
+#include <openvdb/points/AttributeArray.h>
 
 
 class TestAttributeSet;
@@ -56,7 +56,7 @@ class TestAttributeSet;
 namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
-namespace tools {
+namespace points {
 
 
 ////////////////////////////////////////
@@ -415,12 +415,12 @@ AttributeSet::Descriptor::getDefaultValue(const Name& name) const
 }
 
 
-} // namespace tools
+} // namespace points
 } // namespace OPENVDB_VERSION_NAME
 } // namespace openvdb
 
 
-#endif // OPENVDB_TOOLS_ATTRIBUTE_ARRAY_HAS_BEEN_INCLUDED
+#endif // OPENVDB_POINTS_ATTRIBUTE_ARRAY_HAS_BEEN_INCLUDED
 
 
 // Copyright (c) 2015-2016 Double Negative Visual Effects
