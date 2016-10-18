@@ -322,6 +322,8 @@ void encodeInteger( char* headerBuffer, size_t& headerSize,
     UIntT value = unsignedValue;
     uint8_t key = Local::computeKey(value);
 
+    bool checkUniform = true;
+
     for (size_t i = 1; i < count; i++)
     {
         const UIntT signedValue = Differential ? input[i] - input[i-1] : input[i];
@@ -332,14 +334,27 @@ void encodeInteger( char* headerBuffer, size_t& headerSize,
 
         if (RunLength)
         {
-            if (value == unsignedValue) {
+            if (!Differential || i > 1 || value == unsignedValue) {
                 repeat++;
                 continue;
             }
 
+            // write a zero to indicate all values are not the same
+
+            if (checkUniform) {
+                if (Differential && i == 2) {
+                    header.template push<1>(0);
+                    checkUniform = false;
+                }
+                else if (i == 1) {
+                    header.template push<1>(0);
+                    checkUniform = false;
+                }
+            }
+
             // write run-length bits (ones followed by terminating zero)
 
-            for (int j = 0; j < repeat; j++)   header.template push<1>(1);
+            for (int j = 0; j < repeat; j++)    header.template push<1>(1);
             header.template push<1>(0);
 
             repeat = 0;
@@ -357,8 +372,14 @@ void encodeInteger( char* headerBuffer, size_t& headerSize,
 
     if (RunLength)
     {
-        for (int j = 0; j < repeat; j++)   header.template push<1>(1);
-        header.template push<1>(0);
+        // write a one to indicate all values are the same to compact the header
+        if (checkUniform) {
+            header.template push<1>(1);
+        }
+        else {
+            for (int j = 0; j < repeat; j++)   header.template push<1>(1);
+            header.template push<1>(0);
+        }
     }
 
     bufferWriter.template write(value, Local::clampKey(key));
@@ -408,6 +429,9 @@ void decodeInteger(IntT* output, const size_t count, const char* headerBuffer, c
     integer_compression_internal::BitReader header(headerBuffer);
     integer_compression_internal::BufferReader buffer(data);
 
+    bool uniform = false;
+    if (!Differential && count > 0)  uniform = bool(header.pop<1>());
+
     int index(0);
 
     while (index < count)
@@ -416,7 +440,16 @@ void decodeInteger(IntT* output, const size_t count, const char* headerBuffer, c
 
         int repeat = 1;
         if (RunLength) {
-            while (header.pop<1>())   repeat++;
+            if (Differential && index == 1)     uniform = bool(header.pop<1>());
+            if (!Differential || index > 0) {
+                if (uniform) {
+                    repeat = count;
+                    if (Differential)   repeat--;
+                }
+                else {
+                    while (header.pop<1>())     repeat++;
+                }
+            }
         }
 
         // read key

@@ -473,6 +473,24 @@ TestAttributeArray::testIntegerCompression()
         for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
     }
 
+    { // uint32_t (uniform)
+        std::vector<uint64_t> values;
+        values.reserve(4000);
+
+        for (uint64_t i = 0; i < 4000; i++)                              values.push_back(1000);
+
+        std::stringstream ss;
+        size_t sizeAnalysis = io::writeCompressedIntegers<uint64_t, true>(ss, (uint64_t*)&values[0], values.size());
+        io::writeCompressedIntegers<uint64_t, false>(ss, (uint64_t*)&values[0], values.size());
+        size_t size;
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+        std::cerr << "Size: " << size << std::endl;
+        CPPUNIT_ASSERT_EQUAL(size, sizeAnalysis);
+        boost::scoped_array<uint64_t> newUncompressedBuffer(new uint64_t[values.size()]);
+        io::readCompressedIntegers<uint64_t>(ss, newUncompressedBuffer.get(), values.size());
+
+        for (size_t i = 0; i < values.size(); i++)  CPPUNIT_ASSERT_EQUAL(values[i], newUncompressedBuffer[i]);
+    }
     { // uint32_t (repeated)
         std::vector<uint64_t> values;
         values.reserve(4000);
