@@ -242,6 +242,7 @@ INCLUDE_NAMES := \
     tools/AttributeArrayString.h \
     tools/AttributeGroup.h \
     tools/AttributeSet.h \
+    tools/Compression.h \
     tools/IndexFilter.h \
     tools/IndexIterator.h \
     tools/PointAttribute.h \
@@ -260,6 +261,7 @@ SRC_NAMES := \
     tools/AttributeArrayString.cc \
     tools/AttributeGroup.cc \
     tools/AttributeSet.cc \
+    tools/Compression.cc \
     openvdb.cc \
 #
 
@@ -274,6 +276,7 @@ UNITTEST_SRC_NAMES := \
     unittest/TestAttributeArrayString.cc \
     unittest/TestAttributeSet.cc \
     unittest/TestAttributeGroup.cc \
+    unittest/TestCompression.cc \
     unittest/TestPointAttribute.cc \
     unittest/TestPointConversion.cc \
     unittest/TestPointCount.cc \

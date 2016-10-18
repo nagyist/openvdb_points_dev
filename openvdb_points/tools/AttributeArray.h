@@ -46,6 +46,7 @@
 #include <openvdb/io/io.h> // MappedFile
 #include <openvdb/io/Compression.h> // COMPRESS_BLOSC
 
+#include <openvdb_points/tools/Compression.h>
 #include <openvdb_points/tools/IndexIterator.h>
 
 #include <tbb/spin_mutex.h>
@@ -67,68 +68,6 @@ namespace OPENVDB_VERSION_NAME {
 typedef std::pair<Name, Name> NamePair;
 
 namespace tools {
-
-
-////////////////////////////////////////
-
-// Attribute Compression methods
-
-
-namespace attribute_compression {
-
-/// @brief Returns true if compression is available
-bool canCompress();
-
-/// @brief Retrieves the uncompressed size of buffer when uncompressed
-///
-/// @param buffer the compressed buffer
-size_t uncompressedSize(const char* buffer);
-
-/// @brief Retrieves the compressed size of buffer when compressed
-///
-/// @param buffer the uncompressed buffer
-/// @param typeSize the size of the data type
-/// @param uncompressedBytes number of uncompressed bytes
-size_t compressedSize(const char* buffer, const size_t typeSize, const size_t uncompressedBytes);
-
-/// @brief Compress and return the compressed buffer.
-///
-/// @param buffer the buffer to compress
-/// @param typeSize the size of the data type
-/// @param uncompressedBytes number of uncompressed bytes
-/// @param compressedBytes number of compressed bytes (written to this variable)
-/// @param cleanup if true, the supplied buffer will be deleted prior to allocating new memory
-char* compress( char* buffer, const size_t typeSize,
-                const size_t uncompressedBytes, size_t& compressedBytes,
-                const bool cleanup = false);
-
-/// @brief Compress and return the compressed buffer.
-///
-/// @param buffer the buffer to compress
-/// @param typeSize the size of the data type
-/// @param uncompressedBytes number of uncompressed bytes
-/// @param compressedBytes number of compressed bytes (written to this variable)
-///
-/// @note Unlike the non-const buffer version, the buffer will never be deleted.
-char* compress( const char* buffer, const size_t typeSize,
-                const size_t uncompressedBytes, size_t& compressedBytes);
-
-/// @brief Decompress and return the uncompressed buffer.
-///
-/// @param buffer the buffer to decompress
-/// @param expectedBytes the number of bytes expected once the buffer is decompressed
-/// @param cleanup if true, the supplied buffer will be deleted prior to allocating new memory
-char* decompress(char* buffer, const size_t expectedBytes, const bool cleanup = false);
-
-/// @brief Decompress and return the uncompressed buffer.
-///
-/// @param buffer the buffer to decompress
-/// @param expectedBytes the number of bytes expected once the buffer is decompressed
-///
-/// @note Unlike the non-const buffer version, the buffer will never be deleted.
-char* decompress(const char* buffer, const size_t expectedBytes);
-
-} // namespace attribute_compression
 
 
 ////////////////////////////////////////
@@ -874,9 +813,6 @@ TypedAttributeArray<ValueType_, Codec_>::TypedAttributeArray(const TypedAttribut
     , mIsUniform(rhs.mIsUniform)
     , mMutex()
 {
-    using attribute_compression::decompress;
-    using attribute_compression::uncompressedSize;
-
     // disable uncompress if data is not compressed
 
     if (!this->isCompressed())  uncompress = false;
@@ -887,20 +823,22 @@ TypedAttributeArray<ValueType_, Codec_>::TypedAttributeArray(const TypedAttribut
     } else if (this->isOutOfCore()) {
         // do nothing
     } else if (this->isCompressed()) {
-        char* buffer = 0;
+        std::unique_ptr<StorageType[]> buffer;
         if (uncompress) {
             rhs.doLoad();
-            const char* charBuffer = reinterpret_cast<char*>(rhs.mData);
-            buffer = decompress(charBuffer, uncompressedSize(charBuffer));
+            std::unique_ptr<StorageType[]> ptr(rhs.mData);
+            buffer = io::decompress(ptr, mSize * mStride);
+            ptr.release();
         }
         if (buffer)         mCompressedBytes = 0;
         else {
             // decompression wasn't requested or failed so deep copy instead
-            buffer = new char[mCompressedBytes];
-            memcpy(buffer, rhs.mData, mCompressedBytes);
+            char* newBuffer = new char[mCompressedBytes];
+            memcpy(newBuffer, rhs.mData, mCompressedBytes);
+            buffer.reset(reinterpret_cast<StorageType*>(newBuffer));
         }
         assert(buffer);
-        mData = reinterpret_cast<StorageType*>(buffer);
+        mData = buffer.release();
     } else {
         this->allocate(mSize, mStride);
         memcpy(mData, rhs.mData, this->arrayMemUsage());
@@ -1292,10 +1230,7 @@ template<typename ValueType_, typename Codec_>
 inline bool
 TypedAttributeArray<ValueType_, Codec_>::compress()
 {
-    using attribute_compression::canCompress;
-    using attribute_compression::compress;
-
-    if (!canCompress())     return false;
+    if (!io::canCompress())     return false;
 
     if (!mIsUniform && !this->isCompressed()) {
 
@@ -1307,10 +1242,12 @@ TypedAttributeArray<ValueType_, Codec_>::compress()
         const size_t inBytes = this->arrayMemUsage();
         size_t outBytes;
         char* charBuffer = reinterpret_cast<char*>(mData);
-        char* buffer = compress(charBuffer, typeSize, inBytes, outBytes, /*cleanup=*/true);
+        std::unique_ptr<StorageType[]> ptr(mData);
+        std::unique_ptr<StorageType[]> buffer = io::compress(ptr, mSize * mStride, outBytes);
+        ptr.release();
 
         if (buffer) {
-            mData = reinterpret_cast<StorageType*>(buffer);
+            mData = buffer.release();
             mCompressedBytes = outBytes;
             return true;
         }
@@ -1324,20 +1261,18 @@ template<typename ValueType_, typename Codec_>
 inline bool
 TypedAttributeArray<ValueType_, Codec_>::decompress()
 {
-    using attribute_compression::decompress;
-    using attribute_compression::uncompressedSize;
-
     tbb::spin_mutex::scoped_lock lock(mMutex);
 
     if (this->isCompressed()) {
         this->doLoadUnsafe();
-        char* charBuffer = reinterpret_cast<char*>(this->mData);
-        char* buffer = decompress(charBuffer, uncompressedSize(charBuffer));
+        std::unique_ptr<StorageType[]> ptr(this->mData);
+        std::unique_ptr<StorageType[]> buffer = io::decompress(ptr, mSize * mStride);
         if (buffer) {
-            mData = reinterpret_cast<StorageType*>(buffer);
+            mData = buffer.release();
             mCompressedBytes = 0;
             return true;
         }
+        ptr.release();
     }
 
     return false;
@@ -1473,8 +1408,6 @@ TypedAttributeArray<ValueType_, Codec_>::readBuffers(std::istream& is)
 {
     if (mIsUniform)    return;
 
-    using attribute_compression::decompress;
-
     tbb::spin_mutex::scoped_lock lock(mMutex);
 
     this->deallocate();
@@ -1515,13 +1448,7 @@ TypedAttributeArray<ValueType_, Codec_>::readBuffers(std::istream& is)
     }
 #endif
 
-    char* buffer = new char[mCompressedBytes];
-    is.read(buffer, mCompressedBytes);
-
-    // zero compressed bytes if not compressed in memory
-    if (!(mFlags & WRITEMEMCOMPRESS)) {
-        mCompressedBytes = Index64(0);
-    }
+    std::unique_ptr<StorageType[]> buffer(reinterpret_cast<StorageType*>(new char[mCompressedBytes]));
 
     // compressed on-disk
 
@@ -1529,14 +1456,30 @@ TypedAttributeArray<ValueType_, Codec_>::readBuffers(std::istream& is)
 
         // decompress buffer
 
-        const size_t inBytes = this->arrayMemUsage(/*maximum=*/true);
-        char* newBuffer = decompress(buffer, inBytes, /*cleanup=*/true);
-        if (newBuffer)  buffer = newBuffer;
+        bool customCompression = io::is_compressible_integral<StorageType>::value;
+        customCompression = false;
+
+        if (customCompression) {
+            io::template readCompressedIntegers<StorageType>(is, buffer.get(), mSize * mStride);
+        }
+        else {
+            is.read(reinterpret_cast<char*>(buffer.get()), mCompressedBytes);
+            std::unique_ptr<StorageType[]> newBuffer = io::decompress(buffer, mSize * mStride);
+            if (newBuffer)  buffer.reset(newBuffer.release());
+        }
+    }
+    else {
+        is.read(reinterpret_cast<char*>(buffer.get()), mCompressedBytes);
+    }
+
+    // zero compressed bytes if not compressed in memory
+    if (!(mFlags & WRITEMEMCOMPRESS)) {
+        mCompressedBytes = Index64(0);
     }
 
     // set data to buffer
 
-    mData = reinterpret_cast<StorageType*>(buffer);
+    mData = buffer.release();
 
     // clear all write flags
 
@@ -1566,8 +1509,6 @@ template<typename ValueType_, typename Codec_>
 void
 TypedAttributeArray<ValueType_, Codec_>::writeMetadata(std::ostream& os, bool outputTransient) const
 {
-    using attribute_compression::compressedSize;
-
     if (!outputTransient && this->isTransient())    return;
 
     Int16 flags(mFlags);
@@ -1594,10 +1535,20 @@ TypedAttributeArray<ValueType_, Codec_>::writeMetadata(std::ostream& os, bool ou
     {
         this->doLoad();
 
-        const char* charBuffer = reinterpret_cast<const char*>(mData);
-        const size_t typeSize = sizeof(StorageType);
-        const size_t inBytes = this->arrayMemUsage();
-        compressedBytes = compressedSize(charBuffer, typeSize, inBytes);
+        bool customCompression = io::is_compressible_integral<StorageType>::value;
+        customCompression = false;
+
+        if (customCompression) {
+            compressedBytes = io::template writeCompressedIntegers<StorageType, /*Analysis=*/true>(os, reinterpret_cast<StorageType*>(mData), mSize * mStride);
+        }
+        else {
+            const char* charBuffer = reinterpret_cast<const char*>(mData);
+            const size_t typeSize = sizeof(StorageType);
+            const size_t inBytes = this->arrayMemUsage();
+            std::unique_ptr<StorageType[]> ptr(mData);
+            compressedBytes = io::compressedSize(ptr, mSize * mStride);
+            ptr.release();
+        }
         if (compressedBytes > 0)   flags |= WRITEDISKCOMPRESS;
     }
 
@@ -1635,8 +1586,6 @@ TypedAttributeArray<ValueType_, Codec_>::writeBuffers(std::ostream& os, bool out
     if (this->isUniform())                          return;
     if (!outputTransient && this->isTransient())    return;
 
-    using attribute_compression::compress;
-
     this->doLoad();
 
     if (this->isCompressed())
@@ -1645,14 +1594,23 @@ TypedAttributeArray<ValueType_, Codec_>::writeBuffers(std::ostream& os, bool out
     }
     else if (io::getDataCompression(os) & io::COMPRESS_BLOSC)
     {
-        boost::scoped_array<char> compressedBuffer;
-        size_t compressedBytes = 0;
-        const char* charBuffer = reinterpret_cast<const char*>(mData);
-        const size_t typeSize = sizeof(StorageType);
-        const size_t inBytes = this->arrayMemUsage();
-        compressedBuffer.reset(compress(charBuffer, typeSize, inBytes, compressedBytes));
-        if (compressedBuffer)   os.write(reinterpret_cast<const char*>(compressedBuffer.get()), compressedBytes);
-        else                    os.write(reinterpret_cast<const char*>(mData), inBytes);
+        bool customCompression = io::is_compressible_integral<StorageType>::value;
+        customCompression = false;
+
+        if (customCompression) {
+            io::template writeCompressedIntegers<StorageType, /*Analysis=*/false>(os, reinterpret_cast<StorageType*>(mData), mSize * mStride);
+        }
+        else {
+            size_t compressedBytes = 0;
+            const char* charBuffer = reinterpret_cast<const char*>(mData);
+            const size_t typeSize = sizeof(StorageType);
+            const size_t inBytes = this->arrayMemUsage();
+            std::unique_ptr<StorageType[]> ptr(mData);
+            std::unique_ptr<StorageType[]> compressedBuffer = io::compress(ptr, mSize * mStride, compressedBytes);
+            if (compressedBuffer)   os.write(reinterpret_cast<const char*>(compressedBuffer.get()), compressedBytes);
+            else                    os.write(reinterpret_cast<const char*>(ptr.get()), inBytes);
+            ptr.release();
+        }
     }
     else
     {
@@ -1665,8 +1623,6 @@ template<typename ValueType_, typename Codec_>
 void
 TypedAttributeArray<ValueType_, Codec_>::doLoadUnsafe() const
 {
-    using attribute_compression::decompress;
-
 #ifndef OPENVDB_2_ABI_COMPATIBLE
     if (!(this->isOutOfCore()))     return;
 
@@ -1687,26 +1643,36 @@ TypedAttributeArray<ValueType_, Codec_>::doLoadUnsafe() const
 
     is.seekg(info.bufpos);
 
-    char* buffer = new char[bytes];
-    is.read(buffer, bytes);
-
     if (mFlags & WRITEMEMCOMPRESS) {
         self->mCompressedBytes = info.bytes;
     }
 
     // compressed on-disk
 
+    std::unique_ptr<StorageType[]> buffer(reinterpret_cast<StorageType*>(new char[bytes]));
+
     if (mFlags & WRITEDISKCOMPRESS) {
         // decompress buffer
 
-        const size_t inBytes = this->arrayMemUsage(/*maximum=*/true);
-        char* newBuffer = decompress(buffer, inBytes, /*cleanup=*/true);
-        if (newBuffer)  buffer = newBuffer;
+        bool customCompression = io::is_compressible_integral<StorageType>::value;
+        customCompression = false;
+
+        if (customCompression) {
+            io::template readCompressedIntegers<StorageType>(is, buffer.get(), mSize * mStride);
+        }
+        else {
+            is.read(reinterpret_cast<char*>(buffer.get()), bytes);
+            std::unique_ptr<StorageType[]> newBuffer = io::decompress(buffer, mSize * mStride);
+            if (newBuffer)  buffer.reset(newBuffer.release());
+        }
+    }
+    else {
+        is.read(reinterpret_cast<char*>(buffer.get()), bytes);
     }
 
     // set data to buffer
 
-    self->mData = reinterpret_cast<StorageType*>(buffer);
+    self->mData = buffer.release();
 
     // clear all write and out-of-core flags
 
