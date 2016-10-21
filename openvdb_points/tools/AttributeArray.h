@@ -418,6 +418,7 @@ public:
     typedef ValueType_                                          ValueType;
     typedef Codec_                                              Codec;
     typedef typename Codec::template Storage<ValueType>::Type   StorageType;
+    typedef std::unique_ptr<StorageType[]>                      StorageTypePtr;
 
     //////////
 
@@ -580,11 +581,11 @@ private:
     static AttributeArray::Ptr factory(size_t n, Index stride) { return TypedAttributeArray::create(n, stride); }
 
     static tbb::atomic<const NamePair*> sTypeName;
-    StorageType*    mData;
-    size_t          mSize;
-    Index           mStride;
-    bool            mIsUniform;
-    tbb::spin_mutex mMutex;
+    std::unique_ptr<StorageType[]>      mData;
+    size_t                              mSize;
+    Index                               mStride;
+    bool                                mIsUniform;
+    tbb::spin_mutex                     mMutex;
 }; // class TypedAttributeArray
 
 
@@ -800,14 +801,14 @@ TypedAttributeArray<ValueType_, Codec_>::TypedAttributeArray(
 {
     mSize = std::max(size_t(1), mSize);
     mStride = std::max(Index(1), mStride);
-    Codec::encode(uniformValue, mData[0]);
+    Codec::encode(uniformValue, mData.get()[0]);
 }
 
 
 template<typename ValueType_, typename Codec_>
 TypedAttributeArray<ValueType_, Codec_>::TypedAttributeArray(const TypedAttributeArray& rhs, bool uncompress)
     : AttributeArray(rhs)
-    , mData(NULL)
+    , mData(nullptr)
     , mSize(rhs.mSize)
     , mStride(rhs.mStride)
     , mIsUniform(rhs.mIsUniform)
@@ -819,29 +820,27 @@ TypedAttributeArray<ValueType_, Codec_>::TypedAttributeArray(const TypedAttribut
 
     if (mIsUniform) {
         this->allocate(1, 1);
-        mData[0] = rhs.mData[0];
+        mData.get()[0] = rhs.mData.get()[0];
     } else if (this->isOutOfCore()) {
         // do nothing
     } else if (this->isCompressed()) {
-        std::unique_ptr<StorageType[]> buffer;
+        StorageTypePtr buffer;
         if (uncompress) {
             rhs.doLoad();
-            std::unique_ptr<StorageType[]> ptr(rhs.mData);
-            buffer = io::decompress(ptr, mSize * mStride);
-            ptr.release();
+            buffer = io::decompress(rhs.mData, mSize * mStride);
         }
         if (buffer)         mCompressedBytes = 0;
         else {
             // decompression wasn't requested or failed so deep copy instead
             char* newBuffer = new char[mCompressedBytes];
-            memcpy(newBuffer, rhs.mData, mCompressedBytes);
+            memcpy(newBuffer, reinterpret_cast<char*>(rhs.mData.get()), mCompressedBytes);
             buffer.reset(reinterpret_cast<StorageType*>(newBuffer));
         }
         assert(buffer);
-        mData = buffer.release();
+        mData.reset(buffer.release());
     } else {
         this->allocate(mSize, mStride);
-        memcpy(mData, rhs.mData, this->arrayMemUsage());
+        memcpy(reinterpret_cast<char*>(mData.get()), reinterpret_cast<char*>(rhs.mData.get()), this->arrayMemUsage());
     }
 }
 
@@ -863,18 +862,18 @@ TypedAttributeArray<ValueType_, Codec_>::operator=(const TypedAttributeArray& rh
 
         if (mIsUniform) {
             this->allocate(1, 1);
-            mData[0] = rhs.mData[0];
+            mData.get()[0] = rhs.mData.get()[0];
 #ifndef OPENVDB_2_ABI_COMPATIBLE
         } else if (rhs.isOutOfCore()) {
             mFileInfo = rhs.mFileInfo;
 #endif
         } else if (this->isCompressed()) {
             char* buffer = new char[mCompressedBytes];
-            memcpy(buffer, rhs.mData, mCompressedBytes);
-            mData = reinterpret_cast<StorageType*>(buffer);
+            memcpy(buffer, reinterpret_cast<char*>(rhs.mData.get()), mCompressedBytes);
+            mData.reset(reinterpret_cast<StorageType*>(buffer));
         } else {
             this->allocate(mSize, mStride);
-            memcpy(mData, rhs.mData, arrayMemUsage());
+            memcpy(reinterpret_cast<char*>(mData.get()), reinterpret_cast<char*>(rhs.mData.get()), arrayMemUsage());
         }
     }
 }
@@ -981,7 +980,7 @@ void
 TypedAttributeArray<ValueType_, Codec_>::allocate(const size_t size, const Index stride)
 {
     assert(!mData);
-    mData = new StorageType[size * stride];
+    mData.reset(new StorageType[size * stride]);
 }
 
 
@@ -997,8 +996,7 @@ TypedAttributeArray<ValueType_, Codec_>::deallocate()
     }
 #endif
     if (mData) {
-        delete[] mData;
-        mData = NULL;
+        mData.release();
     }
 }
 
@@ -1007,7 +1005,7 @@ template<typename ValueType_, typename Codec_>
 size_t
 TypedAttributeArray<ValueType_, Codec_>::memUsage() const
 {
-    return sizeof(*this) + (mData != NULL ? this->arrayMemUsage() : 0);
+    return sizeof(*this) + (bool(mData) ? this->arrayMemUsage() : 0);
 }
 
 
@@ -1020,7 +1018,7 @@ TypedAttributeArray<ValueType_, Codec_>::getUnsafe(Index n) const
     assert(!this->isCompressed());
 
     ValueType val;
-    Codec::decode(/*in=*/mData[mIsUniform ? 0 : n], /*out=*/val);
+    Codec::decode(/*in=*/mData.get()[mIsUniform ? 0 : n], /*out=*/val);
     return val;
 }
 
@@ -1075,7 +1073,7 @@ TypedAttributeArray<ValueType_, Codec_>::setUnsafe(Index n, const ValueType& val
     // this unsafe method assumes the data is not uniform, however if it is, this redirects the index
     // to zero, which is marginally less efficient but ensures not writing to an illegal address
 
-    Codec::encode(/*in=*/val, /*out=*/mData[mIsUniform ? 0 : n]);
+    Codec::encode(/*in=*/val, /*out=*/mData.get()[mIsUniform ? 0 : n]);
 }
 
 
@@ -1137,7 +1135,7 @@ TypedAttributeArray<ValueType_, Codec_>::expand(bool fill)
 {
     if (!mIsUniform)    return;
 
-    const StorageType val = mData[0];
+    const StorageType val = mData.get()[0];
 
     {
         tbb::spin_mutex::scoped_lock lock(mMutex);
@@ -1149,7 +1147,7 @@ TypedAttributeArray<ValueType_, Codec_>::expand(bool fill)
     mIsUniform = false;
 
     if (fill) {
-        for (size_t i = 0; i < mSize * mStride; ++i)  mData[i] = val;
+        for (size_t i = 0; i < mSize * mStride; ++i)  mData.get()[i] = val;
     }
 }
 
@@ -1189,7 +1187,7 @@ TypedAttributeArray<ValueType_, Codec_>::collapse(const ValueType& uniformValue)
         this->allocate(1, 1);
         mIsUniform = true;
     }
-    Codec::encode(uniformValue, mData[0]);
+    Codec::encode(uniformValue, mData.get()[0]);
 }
 
 
@@ -1213,7 +1211,7 @@ TypedAttributeArray<ValueType_, Codec_>::fill(const ValueType& value)
 
     const size_t size = mIsUniform ? 1 : mSize;
     for (size_t i = 0; i < size; ++i)  {
-        Codec::encode(value, mData[i]);
+        Codec::encode(value, mData.get()[i]);
     }
 }
 
@@ -1241,13 +1239,10 @@ TypedAttributeArray<ValueType_, Codec_>::compress()
         const size_t typeSize = sizeof(StorageType);
         const size_t inBytes = this->arrayMemUsage();
         size_t outBytes;
-        char* charBuffer = reinterpret_cast<char*>(mData);
-        std::unique_ptr<StorageType[]> ptr(mData);
-        std::unique_ptr<StorageType[]> buffer = io::compress(ptr, mSize * mStride, outBytes);
-        ptr.release();
+        StorageTypePtr buffer = io::compress(mData, mSize * mStride, outBytes);
 
         if (buffer) {
-            mData = buffer.release();
+            mData.reset(buffer.release());
             mCompressedBytes = outBytes;
             return true;
         }
@@ -1265,14 +1260,12 @@ TypedAttributeArray<ValueType_, Codec_>::decompress()
 
     if (this->isCompressed()) {
         this->doLoadUnsafe();
-        std::unique_ptr<StorageType[]> ptr(this->mData);
-        std::unique_ptr<StorageType[]> buffer = io::decompress(ptr, mSize * mStride);
+        StorageTypePtr buffer = io::decompress(mData, mSize * mStride);
         if (buffer) {
-            mData = buffer.release();
+            mData.reset(buffer.release());
             mCompressedBytes = 0;
             return true;
         }
-        ptr.release();
     }
 
     return false;
@@ -1394,7 +1387,7 @@ TypedAttributeArray<ValueType_, Codec_>::readUniform(std::istream& is)
 
     // set data to buffer
 
-    mData = reinterpret_cast<StorageType*>(buffer);
+    mData.reset(reinterpret_cast<StorageType*>(buffer));
 
     // clear all write flags
 
@@ -1448,7 +1441,7 @@ TypedAttributeArray<ValueType_, Codec_>::readBuffers(std::istream& is)
     }
 #endif
 
-    std::unique_ptr<StorageType[]> buffer(reinterpret_cast<StorageType*>(new char[mCompressedBytes]));
+    StorageTypePtr buffer(reinterpret_cast<StorageType*>(new char[mCompressedBytes]));
 
     // compressed on-disk
 
@@ -1464,7 +1457,7 @@ TypedAttributeArray<ValueType_, Codec_>::readBuffers(std::istream& is)
         }
         else {
             is.read(reinterpret_cast<char*>(buffer.get()), mCompressedBytes);
-            std::unique_ptr<StorageType[]> newBuffer = io::decompress(buffer, mSize * mStride);
+            StorageTypePtr newBuffer = io::decompress(buffer, mSize * mStride);
             if (newBuffer)  buffer.reset(newBuffer.release());
         }
     }
@@ -1479,7 +1472,7 @@ TypedAttributeArray<ValueType_, Codec_>::readBuffers(std::istream& is)
 
     // set data to buffer
 
-    mData = buffer.release();
+    mData.reset(buffer.release());
 
     // clear all write flags
 
@@ -1539,15 +1532,10 @@ TypedAttributeArray<ValueType_, Codec_>::writeMetadata(std::ostream& os, bool ou
         customCompression = false;
 
         if (customCompression) {
-            compressedBytes = io::template writeCompressedIntegers<StorageType, /*Analysis=*/true>(os, reinterpret_cast<StorageType*>(mData), mSize * mStride);
+            compressedBytes = io::template writeCompressedIntegers<StorageType, /*Analysis=*/true>(os, mData.get(), mSize * mStride);
         }
         else {
-            const char* charBuffer = reinterpret_cast<const char*>(mData);
-            const size_t typeSize = sizeof(StorageType);
-            const size_t inBytes = this->arrayMemUsage();
-            std::unique_ptr<StorageType[]> ptr(mData);
-            compressedBytes = io::compressedSize(ptr, mSize * mStride);
-            ptr.release();
+            compressedBytes = io::compressedSize(mData, mSize * mStride);
         }
         if (compressedBytes > 0)   flags |= WRITEDISKCOMPRESS;
     }
@@ -1575,7 +1563,7 @@ TypedAttributeArray<ValueType_, Codec_>::writeUniform(std::ostream& os, bool out
     if (!this->isUniform())                         return;
     if (!outputTransient && this->isTransient())    return;
 
-    os.write(reinterpret_cast<const char*>(mData), sizeof(StorageType));
+    os.write(reinterpret_cast<const char*>(mData.get()), sizeof(StorageType));
 }
 
 
@@ -1590,7 +1578,7 @@ TypedAttributeArray<ValueType_, Codec_>::writeBuffers(std::ostream& os, bool out
 
     if (this->isCompressed())
     {
-        os.write(reinterpret_cast<const char*>(mData), mCompressedBytes);
+        os.write(reinterpret_cast<const char*>(mData.get()), mCompressedBytes);
     }
     else if (io::getDataCompression(os) & io::COMPRESS_BLOSC)
     {
@@ -1598,23 +1586,19 @@ TypedAttributeArray<ValueType_, Codec_>::writeBuffers(std::ostream& os, bool out
         customCompression = false;
 
         if (customCompression) {
-            io::template writeCompressedIntegers<StorageType, /*Analysis=*/false>(os, reinterpret_cast<StorageType*>(mData), mSize * mStride);
+            io::template writeCompressedIntegers<StorageType, /*Analysis=*/false>(os, mData.get(), mSize * mStride);
         }
         else {
             size_t compressedBytes = 0;
-            const char* charBuffer = reinterpret_cast<const char*>(mData);
-            const size_t typeSize = sizeof(StorageType);
             const size_t inBytes = this->arrayMemUsage();
-            std::unique_ptr<StorageType[]> ptr(mData);
-            std::unique_ptr<StorageType[]> compressedBuffer = io::compress(ptr, mSize * mStride, compressedBytes);
+            StorageTypePtr compressedBuffer = io::compress(mData, mSize * mStride, compressedBytes);
             if (compressedBuffer)   os.write(reinterpret_cast<const char*>(compressedBuffer.get()), compressedBytes);
-            else                    os.write(reinterpret_cast<const char*>(ptr.get()), inBytes);
-            ptr.release();
+            else                    os.write(reinterpret_cast<const char*>(mData.get()), inBytes);
         }
     }
     else
     {
-        os.write(reinterpret_cast<const char*>(mData), this->arrayMemUsage());
+        os.write(reinterpret_cast<const char*>(mData.get()), this->arrayMemUsage());
     }
 }
 
@@ -1649,7 +1633,7 @@ TypedAttributeArray<ValueType_, Codec_>::doLoadUnsafe() const
 
     // compressed on-disk
 
-    std::unique_ptr<StorageType[]> buffer(reinterpret_cast<StorageType*>(new char[bytes]));
+    StorageTypePtr buffer(reinterpret_cast<StorageType*>(new char[bytes]));
 
     if (mFlags & WRITEDISKCOMPRESS) {
         // decompress buffer
@@ -1662,7 +1646,7 @@ TypedAttributeArray<ValueType_, Codec_>::doLoadUnsafe() const
         }
         else {
             is.read(reinterpret_cast<char*>(buffer.get()), bytes);
-            std::unique_ptr<StorageType[]> newBuffer = io::decompress(buffer, mSize * mStride);
+            StorageTypePtr newBuffer = io::decompress(buffer, mSize * mStride);
             if (newBuffer)  buffer.reset(newBuffer.release());
         }
     }
@@ -1672,7 +1656,7 @@ TypedAttributeArray<ValueType_, Codec_>::doLoadUnsafe() const
 
     // set data to buffer
 
-    self->mData = buffer.release();
+    self->mData.reset(buffer.release());
 
     // clear all write and out-of-core flags
 
@@ -1709,7 +1693,7 @@ TypedAttributeArray<ValueType_, Codec_>::isEqual(const AttributeArray& other) co
     this->doLoad();
     otherT->doLoad();
 
-    const StorageType *target = this->mData, *source = otherT->mData;
+    const StorageType *target = this->mData.get(), *source = otherT->mData.get();
     if (!target && !source) return true;
     if (!target || !source) return false;
     Index n = this->mIsUniform ? 1 : mSize;
