@@ -680,17 +680,17 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
 
     // allocate temporary buffers
 
-    boost::scoped_array<char> buffer;
-    boost::scoped_array<char> header;
+    std::unique_ptr<char[]> buffer;
+    std::unique_ptr<char[]> header;
 
-    boost::scoped_array<char> tempBuffer;
-    boost::scoped_array<char> tempHeader;
+    std::unique_ptr<char[]> tempBuffer;
+    std::unique_ptr<char[]> tempHeader;
 
     if (!Analysis) {
-        buffer.reset(new char[count*sizeof(T)]);
+        buffer.reset(new char[count*sizeof(T)+count]);
         header.reset(new char[count]);
 
-        tempBuffer.reset(new char[count*sizeof(T)]);
+        tempBuffer.reset(new char[count*sizeof(T)+count]);
         tempHeader.reset(new char[count]);
     }
 
@@ -707,7 +707,7 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
 
     // packed compression
 
-    encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, false, false, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get(), tempBufferSize, input, count);
+    encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, false, false, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+count, tempBufferSize, input, count);
 
     if (tempHeaderSize + tempBufferSize < size) {
         if (!Analysis) {
@@ -724,7 +724,7 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
 
     // packed, differential compression
 
-    encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, true, false, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get(), tempBufferSize, input, count);
+    encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, true, false, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+count, tempBufferSize, input, count);
 
     if (tempHeaderSize + tempBufferSize < size) {
         if (!Analysis) {
@@ -745,7 +745,7 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
     {
         // packed, run-length compression
 
-        encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, false, true, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get(), tempBufferSize, input, count);
+        encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, false, true, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+count, tempBufferSize, input, count);
 
         if (tempHeaderSize + tempBufferSize < size) {
             if (!Analysis) {
@@ -762,7 +762,7 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
 
         // packed, run-length, differential compression
 
-        encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, true, true, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get(), tempBufferSize, input, count);
+        encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, true, true, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+count, tempBufferSize, input, count);
 
         if (tempHeaderSize + tempBufferSize < size) {
             if (!Analysis) {
@@ -782,7 +782,18 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
 
     if (Analysis)   return size;
 
+    const size_t totalHeaderSize = headerSize + /*flags*/ sizeof(uint8_t) + ((newFlags & RUNLENGTH) ? sizeof(size_t) : 0);
+
     // write data
+
+    char* headerStart = header.get() + count - totalHeaderSize;
+    char* headerPtr = headerStart;
+
+    std::memcpy(headerPtr, reinterpret_cast<const char*>(&newFlags), sizeof(uint8_t));
+    headerPtr += sizeof(uint8_t);
+    if (newFlags & RUNLENGTH) {
+        std::memcpy(headerPtr, reinterpret_cast<const char*>(&headerSize), sizeof(size_t));
+    }
 
     os.write(reinterpret_cast<const char*>(&newFlags), sizeof(uint8_t));
 
@@ -796,7 +807,7 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
         os.write(reinterpret_cast<const char*>(input), bufferSize);
     }
     else {
-        os.write(reinterpret_cast<const char*>(buffer.get()), bufferSize);
+        os.write(reinterpret_cast<const char*>(buffer.get()+count), bufferSize);
     }
 
     return size;
@@ -850,7 +861,7 @@ readCompressedIntegers(std::istream& is, T* output, const size_t count)
 
     const bool differential = flags & DIFFERENTIAL;
 
-    boost::scoped_array<char> header;
+    std::unique_ptr<char[]> header;
     if (headerSize > 0) {
         if (seek) {
             is.seekg(/*bytes=*/headerSize, std::ios_base::cur);
@@ -863,7 +874,7 @@ readCompressedIntegers(std::istream& is, T* output, const size_t count)
 
     size_t bufferSize = size - headerSize;
 
-    boost::scoped_array<char> buffer;
+    std::unique_ptr<char[]> buffer;
     if (bufferSize > 0) {
         if (seek) {
             is.seekg(/*bytes=*/bufferSize, std::ios_base::cur);
