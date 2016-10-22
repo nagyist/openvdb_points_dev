@@ -1449,17 +1449,9 @@ TypedAttributeArray<ValueType_, Codec_>::readBuffers(std::istream& is)
 
         // decompress buffer
 
-        bool customCompression = io::is_compressible_integral<StorageType>::value;
-        customCompression = false;
-
-        if (customCompression) {
-            io::template readCompressedIntegers<StorageType>(is, buffer.get(), mSize * mStride);
-        }
-        else {
-            is.read(reinterpret_cast<char*>(buffer.get()), mCompressedBytes);
-            StorageTypePtr newBuffer = io::decompress(buffer, mSize * mStride);
-            if (newBuffer)  buffer.reset(newBuffer.release());
-        }
+        is.read(reinterpret_cast<char*>(buffer.get()), mCompressedBytes);
+        StorageTypePtr newBuffer = io::decompress(buffer, mSize * mStride);
+        if (newBuffer)  buffer.reset(newBuffer.release());
     }
     else {
         is.read(reinterpret_cast<char*>(buffer.get()), mCompressedBytes);
@@ -1528,15 +1520,7 @@ TypedAttributeArray<ValueType_, Codec_>::writeMetadata(std::ostream& os, bool ou
     {
         this->doLoad();
 
-        bool customCompression = io::is_compressible_integral<StorageType>::value;
-        customCompression = false;
-
-        if (customCompression) {
-            compressedBytes = io::template writeCompressedIntegers<StorageType, /*Analysis=*/true>(os, mData.get(), mSize * mStride);
-        }
-        else {
-            compressedBytes = io::compressedSize(mData, mSize * mStride);
-        }
+        compressedBytes = io::compressedSize(mData, mSize * mStride);
         if (compressedBytes > 0)   flags |= WRITEDISKCOMPRESS;
     }
 
@@ -1582,19 +1566,11 @@ TypedAttributeArray<ValueType_, Codec_>::writeBuffers(std::ostream& os, bool out
     }
     else if (io::getDataCompression(os) & io::COMPRESS_BLOSC)
     {
-        bool customCompression = io::is_compressible_integral<StorageType>::value;
-        customCompression = false;
-
-        if (customCompression) {
-            io::template writeCompressedIntegers<StorageType, /*Analysis=*/false>(os, mData.get(), mSize * mStride);
-        }
-        else {
-            size_t compressedBytes = 0;
-            const size_t inBytes = this->arrayMemUsage();
-            StorageTypePtr compressedBuffer = io::compress(mData, mSize * mStride, compressedBytes);
-            if (compressedBuffer)   os.write(reinterpret_cast<const char*>(compressedBuffer.get()), compressedBytes);
-            else                    os.write(reinterpret_cast<const char*>(mData.get()), inBytes);
-        }
+        size_t compressedBytes = 0;
+        const size_t inBytes = this->arrayMemUsage();
+        StorageTypePtr compressedBuffer = io::compress(mData, mSize * mStride, compressedBytes);
+        if (compressedBuffer)   os.write(reinterpret_cast<const char*>(compressedBuffer.get()), compressedBytes);
+        else                    os.write(reinterpret_cast<const char*>(mData.get()), inBytes);
     }
     else
     {
@@ -1638,17 +1614,9 @@ TypedAttributeArray<ValueType_, Codec_>::doLoadUnsafe() const
     if (mFlags & WRITEDISKCOMPRESS) {
         // decompress buffer
 
-        bool customCompression = io::is_compressible_integral<StorageType>::value;
-        customCompression = false;
-
-        if (customCompression) {
-            io::template readCompressedIntegers<StorageType>(is, buffer.get(), mSize * mStride);
-        }
-        else {
-            is.read(reinterpret_cast<char*>(buffer.get()), bytes);
-            StorageTypePtr newBuffer = io::decompress(buffer, mSize * mStride);
-            if (newBuffer)  buffer.reset(newBuffer.release());
-        }
+        is.read(reinterpret_cast<char*>(buffer.get()), bytes);
+        StorageTypePtr newBuffer = io::decompress(buffer, mSize * mStride);
+        if (newBuffer)  buffer.reset(newBuffer.release());
     }
     else {
         is.read(reinterpret_cast<char*>(buffer.get()), bytes);

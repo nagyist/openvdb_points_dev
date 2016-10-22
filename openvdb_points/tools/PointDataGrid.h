@@ -60,31 +60,6 @@ namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
 
-namespace io
-{
-
-template<>
-inline void
-readCompressedValues(   std::istream& is, PointDataIndex32* destBuf, Index destCount,
-                        const util::NodeMask<3>& /*valueMask*/, bool /*fromHalf*/)
-{
-    BOOST_STATIC_ASSERT(sizeof(PointDataIndex32) == sizeof(Index32));
-    Index32* intBuf = reinterpret_cast<Index32*>(destBuf);
-    io::readCompressedIntegers(is, intBuf, destCount);
-}
-
-template<>
-inline void
-writeCompressedValues(  std::ostream& os, PointDataIndex32* srcBuf, Index srcCount,
-                        const util::NodeMask<3>& /*valueMask*/, const util::NodeMask<3>& /*childMask*/, bool /*toHalf*/)
-{
-    BOOST_STATIC_ASSERT(sizeof(PointDataIndex32) == sizeof(Index32));
-    Index32* intBuf = reinterpret_cast<Index32*>(srcBuf);
-    io::writeCompressedIntegers<Index32, /*analysis=*/false>(os, intBuf, srcCount);
-}
-
-} // namespace io
-
 // forward declaration
 namespace tree {
     template<Index, typename> struct SameLeafConfig;
@@ -1043,9 +1018,6 @@ PointDataLeafNode<T, Log2Dim>::readBuffers(std::istream& is, bool fromHalf)
 
         if (pass == 0) {
             // pass 0 - voxel data size
-            size_t size;
-            is.read(reinterpret_cast<char*>(&size), sizeof(size_t));
-            mBufferSize = Index32(size);
         }
         else if (pass == 1) {
             // pass 1 - voxel data
@@ -1114,10 +1086,6 @@ PointDataLeafNode<T, Log2Dim>::writeBuffers(std::ostream& os, bool toHalf) const
 
         if (pass == 0) {
             // pass 0 - voxel data size
-            // (for compatibility with desire to seek over voxel buffer in the future)
-            BOOST_STATIC_ASSERT(sizeof(PointDataIndex32) == sizeof(Index32));
-            const Index32* intBuf = reinterpret_cast<const Index32*>(this->buffer().data());
-            io::writeCompressedIntegers<Index32, /*analysis=*/true>(os, intBuf, SIZE);
         }
         else if (pass == 1) {
             // pass 1 - voxel data
