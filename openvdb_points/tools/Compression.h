@@ -666,15 +666,15 @@ template<> struct is_compressible_integral<bool> {
 };
 
 template <typename T, bool Analysis>
-typename std::enable_if<!is_compressible_integral<T>::value,size_t>::type
-writeCompressedIntegers(std::ostream&, const T*, const size_t)
+typename std::enable_if<!is_compressible_integral<T>::value,std::unique_ptr<char[]>>::type
+writeCompressedIntegers(std::ostream&, const T*, const size_t, size_t&)
 {
     OPENVDB_THROW(openvdb::RuntimeError, "Invalid Type for Integer Compression.");
 }
 
 template <typename T, bool Analysis>
-typename std::enable_if<is_compressible_integral<T>::value,size_t>::type
-writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
+typename std::enable_if<is_compressible_integral<T>::value,std::unique_ptr<char[]>>::type
+writeCompressedIntegers(const std::unique_ptr<T[]>& input, const size_t count, size_t& size)
 {
     const bool pack8 = sizeof(T) >= 8;
 
@@ -686,11 +686,13 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
     std::unique_ptr<char[]> tempBuffer;
     std::unique_ptr<char[]> tempHeader;
 
+    const size_t prefix = count + sizeof(size_t) + sizeof(uint8_t);
+
     if (!Analysis) {
-        buffer.reset(new char[count*sizeof(T)+count]);
+        buffer.reset(new char[count*sizeof(T)+prefix]);
         header.reset(new char[count]);
 
-        tempBuffer.reset(new char[count*sizeof(T)+count]);
+        tempBuffer.reset(new char[count*sizeof(T)+prefix]);
         tempHeader.reset(new char[count]);
     }
 
@@ -703,11 +705,11 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
 
     size_t headerSize(0);
     size_t bufferSize(sizeof(T) * count);
-    size_t size = headerSize + bufferSize;
+    size = headerSize + bufferSize;
 
     // packed compression
 
-    encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, false, false, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+count, tempBufferSize, input, count);
+    encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, false, false, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+prefix, tempBufferSize, input.get(), count);
 
     if (tempHeaderSize + tempBufferSize < size) {
         if (!Analysis) {
@@ -724,7 +726,7 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
 
     // packed, differential compression
 
-    encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, true, false, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+count, tempBufferSize, input, count);
+    encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, true, false, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+prefix, tempBufferSize, input.get(), count);
 
     if (tempHeaderSize + tempBufferSize < size) {
         if (!Analysis) {
@@ -745,7 +747,7 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
     {
         // packed, run-length compression
 
-        encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, false, true, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+count, tempBufferSize, input, count);
+        encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, false, true, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+prefix, tempBufferSize, input.get(), count);
 
         if (tempHeaderSize + tempBufferSize < size) {
             if (!Analysis) {
@@ -762,7 +764,7 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
 
         // packed, run-length, differential compression
 
-        encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, true, true, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+count, tempBufferSize, input, count);
+        encodeInteger<T, (sizeof(T) >= 8) ? 3 : 2, true, true, Analysis>(tempHeader.get(), tempHeaderSize, tempBuffer.get()+prefix, tempBufferSize, input.get(), count);
 
         if (tempHeaderSize + tempBufferSize < size) {
             if (!Analysis) {
@@ -778,59 +780,54 @@ writeCompressedIntegers(std::ostream& os, const T* input, const size_t count)
         }
     }
 
-    os.write(reinterpret_cast<const char*>(&size), sizeof(size_t));
+    size_t flagSize = sizeof(uint8_t);
+    size_t runLengthSize = (newFlags & RUNLENGTH) ? sizeof(size_t) : size_t(0);
 
-    if (Analysis)   return size;
+    const size_t memSize = bufferSize+headerSize+runLengthSize+flagSize;
 
-    const size_t totalHeaderSize = headerSize + /*flags*/ sizeof(uint8_t) + ((newFlags & RUNLENGTH) ? sizeof(size_t) : 0);
+    size = memSize;
 
-    // write data
+    if (Analysis)   return nullptr;
 
-    char* headerStart = header.get() + count - totalHeaderSize;
-    char* headerPtr = headerStart;
-
-    std::memcpy(headerPtr, reinterpret_cast<const char*>(&newFlags), sizeof(uint8_t));
-    headerPtr += sizeof(uint8_t);
-    if (newFlags & RUNLENGTH) {
-        std::memcpy(headerPtr, reinterpret_cast<const char*>(&headerSize), sizeof(size_t));
-    }
-
-    os.write(reinterpret_cast<const char*>(&newFlags), sizeof(uint8_t));
+    std::memcpy(buffer.get()+prefix-headerSize-runLengthSize-flagSize, reinterpret_cast<const char*>(&newFlags), flagSize);
 
     if (newFlags & RUNLENGTH) {
-        os.write(reinterpret_cast<const char*>(&headerSize), sizeof(size_t));
+        std::memcpy(buffer.get()+prefix-headerSize-runLengthSize, reinterpret_cast<const char*>(&headerSize), sizeof(size_t));
     }
 
-    os.write(reinterpret_cast<const char*>(header.get()), headerSize);
+    std::memcpy(buffer.get()+prefix-headerSize, reinterpret_cast<const char*>(header.get()), headerSize);
 
     if (newFlags == 0) {
-        os.write(reinterpret_cast<const char*>(input), bufferSize);
-    }
-    else {
-        os.write(reinterpret_cast<const char*>(buffer.get()+count), bufferSize);
+        std::memcpy(buffer.get()+prefix, reinterpret_cast<const char*>(input.get()), bufferSize);
     }
 
-    return size;
+    std::unique_ptr<char[]> newBuffer(new char[memSize]);
+    std::memcpy(reinterpret_cast<char*>(newBuffer.get()), buffer.get()+prefix-headerSize-runLengthSize-flagSize, memSize);
+
+    return newBuffer;
 }
 
 
 template <typename T>
-typename std::enable_if<!is_compressible_integral<T>::value,void>::type
-readCompressedIntegers(std::istream& is, T* output, const size_t count)
+typename std::enable_if<!is_compressible_integral<T>::value,std::unique_ptr<T[]>>::type
+readCompressedIntegers(const std::unique_ptr<char[]>& input, const size_t count, const size_t size)
 {
     OPENVDB_THROW(openvdb::RuntimeError, "Invalid Type for Integer Compression.");
 }
 
 
 template <typename T>
-typename std::enable_if<is_compressible_integral<T>::value,void>::type
-readCompressedIntegers(std::istream& is, T* output, const size_t count)
+typename std::enable_if<is_compressible_integral<T>::value,std::unique_ptr<T[]>>::type
+readCompressedIntegers(const std::unique_ptr<char[]>& input, const size_t count, const size_t size)
 {
-    size_t size;
-    is.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+    std::unique_ptr<T[]> output(new T[count]);
+
+    size_t counter = 0;
+
+    size_t flagSize = sizeof(uint8_t);
 
     uint8_t flags(0);
-    is.read(reinterpret_cast<char*>(&flags), sizeof(uint8_t));
+    std::memcpy(&flags, input.get(), flagSize);
 
     bool runLength = flags & RUNLENGTH;
 
@@ -839,75 +836,63 @@ readCompressedIntegers(std::istream& is, T* output, const size_t count)
     if (flags & PACK4)          bits = 2;
     else if (flags & PACK8)     bits = 3;
 
+    size_t runLengthSize = 0;
+
     size_t headerSize;
     if (runLength) {
-        is.read(reinterpret_cast<char*>(&headerSize), sizeof(size_t));
+        runLengthSize = sizeof(size_t);
+        std::memcpy(&headerSize, input.get()+flagSize, runLengthSize);
     }
     else {
         headerSize = ((count * bits) + CHAR_BIT - 1) / CHAR_BIT;
     }
 
-    const bool seek = output == NULL;
-
     // no compression
 
     if (bits == 0)
     {
-        if (seek)   is.seekg(/*bytes=*/sizeof(T) * count, std::ios_base::cur);
-        else        is.read(reinterpret_cast<char*>(output), sizeof(T) * count);
-        return;
+        std::memcpy(reinterpret_cast<char*>(output.get()), input.get()+flagSize+runLengthSize, sizeof(T) * count);
+        return output;
     }
-
 
     const bool differential = flags & DIFFERENTIAL;
 
     std::unique_ptr<char[]> header;
     if (headerSize > 0) {
-        if (seek) {
-            is.seekg(/*bytes=*/headerSize, std::ios_base::cur);
-        }
-        else {
-            header.reset(new char[headerSize]);
-            is.read(reinterpret_cast<char*>(header.get()), headerSize);
-        }
+        header.reset(new char[headerSize]);
+        std::memcpy(reinterpret_cast<char*>(header.get()), input.get()+flagSize+runLengthSize, headerSize);
     }
 
     size_t bufferSize = size - headerSize;
 
     std::unique_ptr<char[]> buffer;
     if (bufferSize > 0) {
-        if (seek) {
-            is.seekg(/*bytes=*/bufferSize, std::ios_base::cur);
-        }
-        else {
-            buffer.reset(new char[bufferSize]);
-            is.read(reinterpret_cast<char*>(buffer.get()), bufferSize);
-        }
+        buffer.reset(new char[bufferSize]);
+        std::memcpy(reinterpret_cast<char*>(buffer.get()), input.get()+flagSize+runLengthSize+headerSize, bufferSize);
     }
 
-    if (!seek)
+    if (runLength && differential)
     {
-        if (runLength && differential)
-        {
-            if (bits == 2)          decodeInteger<T, 2, true, true>(output, count, header.get(), buffer.get());
-            else if (bits == 3)     decodeInteger<T, 3, true, true>(output, count, header.get(), buffer.get());
-        }
-        else if (runLength)
-        {
-            if (bits == 2)          decodeInteger<T, 2, false, true>(output, count, header.get(), buffer.get());
-            else if (bits == 3)     decodeInteger<T, 3, false, true>(output, count, header.get(), buffer.get());
-        }
-        else if (differential)
-        {
-            if (bits == 2)          decodeInteger<T, 2, true, false>(output, count, header.get(), buffer.get());
-            else if (bits == 3)     decodeInteger<T, 3, true, false>(output, count, header.get(), buffer.get());
-        }
-        else
-        {
-            if (bits == 2)          decodeInteger<T, 2, false, false>(output, count, header.get(), buffer.get());
-            else if (bits == 3)     decodeInteger<T, 3, false, false>(output, count, header.get(), buffer.get());
-        }
+        if (bits == 2)          decodeInteger<T, 2, true, true>(output.get(), count, header.get(), buffer.get());
+        else if (bits == 3)     decodeInteger<T, 3, true, true>(output.get(), count, header.get(), buffer.get());
     }
+    else if (runLength)
+    {
+        if (bits == 2)          decodeInteger<T, 2, false, true>(output.get(), count, header.get(), buffer.get());
+        else if (bits == 3)     decodeInteger<T, 3, false, true>(output.get(), count, header.get(), buffer.get());
+    }
+    else if (differential)
+    {
+        if (bits == 2)          decodeInteger<T, 2, true, false>(output.get(), count, header.get(), buffer.get());
+        else if (bits == 3)     decodeInteger<T, 3, true, false>(output.get(), count, header.get(), buffer.get());
+    }
+    else
+    {
+        if (bits == 2)          decodeInteger<T, 2, false, false>(output.get(), count, header.get(), buffer.get());
+        else if (bits == 3)     decodeInteger<T, 3, false, false>(output.get(), count, header.get(), buffer.get());
+    }
+
+    return output;
 }
 
 
