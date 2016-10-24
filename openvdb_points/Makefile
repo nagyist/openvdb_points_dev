@@ -238,6 +238,7 @@ ifdef LINUX
 endif
 
 INCLUDE_NAMES := \
+    tools/ArrayCompression.h \
     tools/AttributeArray.h \
     tools/AttributeArrayString.h \
     tools/AttributeGroup.h \
@@ -268,12 +269,13 @@ UNITTEST_INCLUDE_NAMES := \
 
 UNITTEST_SRC_NAMES := \
     unittest/main.cc \
-    unittest/TestIndexFilter.cc \
-    unittest/TestIndexIterator.cc \
+    unittest/TestArrayCompression.cc \
     unittest/TestAttributeArray.cc \
     unittest/TestAttributeArrayString.cc \
     unittest/TestAttributeSet.cc \
     unittest/TestAttributeGroup.cc \
+    unittest/TestIndexFilter.cc \
+    unittest/TestIndexIterator.cc \
     unittest/TestPointAttribute.cc \
     unittest/TestPointConversion.cc \
     unittest/TestPointCount.cc \
