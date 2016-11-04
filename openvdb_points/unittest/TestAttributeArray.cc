@@ -1036,6 +1036,8 @@ TestAttributeArray::testDelayedLoad()
 
     AttributeArrayI::registerType();
 
+    io::StreamMetadata::Ptr streamMetadata(new io::StreamMetadata);
+
     std::string tempDir(std::getenv("TMPDIR"));
     if (tempDir.empty())    tempDir = P_tmpdir;
 
@@ -1054,9 +1056,18 @@ TestAttributeArray::testDelayedLoad()
             std::ofstream fileout;
             filename = tempDir + "/openvdb_delayed1";
             fileout.open(filename.c_str());
+            io::setStreamMetadataPtr(fileout, streamMetadata);
             io::setDataCompression(fileout, io::COMPRESS_BLOSC);
 
-            attrA.write(fileout);
+            attrA.writeMetadata(fileout, false, /*paged=*/true);
+            compression::PagedOutputStream outputStreamSize(fileout);
+            outputStreamSize.setSizeOnly(true);
+            attrA.writePagedBuffers(outputStreamSize, false);
+            outputStreamSize.flush();
+            compression::PagedOutputStream outputStream(fileout);
+            outputStream.setSizeOnly(false);
+            attrA.writePagedBuffers(outputStream, false);
+            outputStream.flush();
 
             fileout.close();
         }
@@ -1071,9 +1082,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(matchingNamePairs(attrA.type(), attrB.type()));
             CPPUNIT_ASSERT_EQUAL(attrA.size(), attrB.size());
@@ -1099,9 +1116,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
 
@@ -1121,9 +1144,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
 
@@ -1141,9 +1170,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
 
@@ -1165,9 +1200,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
 
@@ -1198,9 +1239,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
 
@@ -1214,9 +1261,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
 
@@ -1242,9 +1295,19 @@ TestAttributeArray::testDelayedLoad()
             std::ofstream fileout;
             filename = tempDir + "/openvdb_delayed2";
             fileout.open(filename.c_str());
+            io::setStreamMetadataPtr(fileout, streamMetadata);
             io::setDataCompression(fileout, io::COMPRESS_BLOSC);
 
-            attrUniform.write(fileout);
+            attrUniform.writeMetadata(fileout, false, /*paged=*/true);
+
+            compression::PagedOutputStream outputStreamSize(fileout);
+            outputStreamSize.setSizeOnly(true);
+            attrUniform.writePagedBuffers(outputStreamSize, false);
+            outputStreamSize.flush();
+            compression::PagedOutputStream outputStream(fileout);
+            outputStream.setSizeOnly(false);
+            attrUniform.writePagedBuffers(outputStream, false);
+            outputStream.flush();
 
             fileout.close();
         }
@@ -1259,19 +1322,21 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
-
-            CPPUNIT_ASSERT(attrB.isOutOfCore());
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isUniform());
 
             attrB.fill(5);
 
             CPPUNIT_ASSERT(attrB.isUniform());
-
-            CPPUNIT_ASSERT(!attrB.isOutOfCore());
 
             for (unsigned i = 0; i < unsigned(count); ++i) {
                 CPPUNIT_ASSERT_EQUAL(5, attrB.get(i));
@@ -1288,9 +1353,19 @@ TestAttributeArray::testDelayedLoad()
             std::ofstream fileout;
             filename = tempDir + "/openvdb_delayed3";
             fileout.open(filename.c_str());
+            io::setStreamMetadataPtr(fileout, streamMetadata);
             io::setDataCompression(fileout, io::COMPRESS_BLOSC);
 
-            attrStrided.write(fileout);
+            attrStrided.writeMetadata(fileout, false, /*paged=*/true);
+
+            compression::PagedOutputStream outputStreamSize(fileout);
+            outputStreamSize.setSizeOnly(true);
+            attrStrided.writePagedBuffers(outputStreamSize, false);
+            outputStreamSize.flush();
+            compression::PagedOutputStream outputStream(fileout);
+            outputStream.setSizeOnly(false);
+            attrStrided.writePagedBuffers(outputStream, false);
+            outputStream.flush();
 
             fileout.close();
         }
@@ -1305,9 +1380,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isStrided());
             CPPUNIT_ASSERT_EQUAL(attrB.stride(), Index(3));
@@ -1318,10 +1399,20 @@ TestAttributeArray::testDelayedLoad()
             std::ofstream fileout;
             filename = tempDir + "/openvdb_delayed4";
             fileout.open(filename.c_str());
+            io::setStreamMetadataPtr(fileout, streamMetadata);
             io::setDataCompression(fileout, io::COMPRESS_BLOSC);
 
             attrA.compress();
-            attrA.write(fileout);
+            attrA.writeMetadata(fileout, false, /*paged=*/true);
+
+            compression::PagedOutputStream outputStreamSize(fileout);
+            outputStreamSize.setSizeOnly(true);
+            attrA.writePagedBuffers(outputStreamSize, false);
+            outputStreamSize.flush();
+            compression::PagedOutputStream outputStream(fileout);
+            outputStream.setSizeOnly(false);
+            attrA.writePagedBuffers(outputStream, false);
+            outputStream.flush();
 
             fileout.close();
         }
@@ -1336,9 +1427,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
 #ifdef OPENVDB_USE_BLOSC
             CPPUNIT_ASSERT(attrB.isCompressed());
@@ -1346,6 +1443,11 @@ TestAttributeArray::testDelayedLoad()
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
             attrB.loadData();
+            CPPUNIT_ASSERT(!attrB.isOutOfCore());
+
+#ifdef OPENVDB_USE_BLOSC
+            CPPUNIT_ASSERT(attrB.isCompressed());
+#endif
 
             CPPUNIT_ASSERT_EQUAL(attrA.memUsage(), attrB.memUsage());
 
@@ -1359,9 +1461,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
 
@@ -1380,9 +1488,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
             CPPUNIT_ASSERT(attrB.isCompressed());
@@ -1398,9 +1512,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
 
@@ -1431,9 +1551,15 @@ TestAttributeArray::testDelayedLoad()
             AttributeArrayI attrB;
 
             std::ifstream filein(filename.c_str(), std::ios_base::in | std::ios_base::binary);
+            io::setStreamMetadataPtr(filein, streamMetadata);
             io::setMappedFilePtr(filein, mappedFile);
 
-            attrB.read(filein);
+            attrB.readMetadata(filein);
+            compression::PagedInputStream inputStream(filein);
+            inputStream.setSizeOnly(true);
+            attrB.readPagedBuffers(inputStream);
+            inputStream.setSizeOnly(false);
+            attrB.readPagedBuffers(inputStream);
 
             CPPUNIT_ASSERT(attrB.isOutOfCore());
 

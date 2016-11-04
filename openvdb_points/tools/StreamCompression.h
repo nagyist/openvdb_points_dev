@@ -41,8 +41,15 @@
 
 #include <openvdb/io/Compression.h> // COMPRESS_BLOSC
 
+#include <tbb/spin_mutex.h>
+
 #include <memory>
 #include <string>
+
+
+#ifdef OPENVDB_USE_BLOSC
+#include <blosc.h>
+#endif
 
 
 namespace openvdb {
@@ -114,6 +121,136 @@ void bloscDecompress(   char* uncompressedBuffer, const size_t expectedBytes,
 ///                             skipped if it is known that the resulting buffer is temporary
 std::unique_ptr<char[]> bloscDecompress(const char* buffer, const size_t expectedBytes,
                                         const bool resize = true);
+
+
+////////////////////////////////////////
+
+
+// 1MB = 1048576 Bytes
+static const int PageSize = 1024 * 1024;
+
+
+class Page
+{
+private:
+    struct Info
+    {
+        io::MappedFile::Ptr mappedFile;
+        SharedPtr<io::StreamMetadata> meta;
+        std::streamoff filepos;
+        long compressedBytes;
+        long uncompressedBytes;
+    }; // Info
+
+public:
+    using Ptr = std::shared_ptr<Page>;
+
+    Page() = default;
+
+    void load() const;
+
+    long uncompressedBytes() const;
+
+    const char* buffer(const int index) const;
+
+    void readHeader(std::istream& is);
+
+    void readBuffers(std::istream&is, bool delayed);
+
+private:
+    bool isOutOfCore() const;
+
+    void copy(const std::unique_ptr<char[]>& temp, int pageSize);
+
+    void decompress(const std::unique_ptr<char[]>& temp);
+
+    void doLoad() const;
+
+    std::unique_ptr<Info> mInfo = std::unique_ptr<Info>(new Info);
+    std::unique_ptr<char[]> mData;
+    tbb::spin_mutex mMutex;
+}; // class Page
+
+
+class PageHandle
+{
+public:
+    using Ptr = std::shared_ptr<PageHandle>;
+
+    PageHandle(const Page::Ptr& page, const int index, const int size);
+
+    Page& page();
+
+    std::unique_ptr<char[]> read();
+
+private:
+    Page::Ptr mPage;
+    int mIndex = -1;
+    int mSize = 0;
+}; // class PageHandle
+
+
+class PagedInputStream
+{
+public:
+    using Ptr = std::shared_ptr<PagedInputStream>;
+
+    PagedInputStream() = default;
+
+    explicit PagedInputStream(std::istream& is);
+
+    void setSizeOnly(bool sizeOnly) { mSizeOnly = sizeOnly; }
+    bool sizeOnly() const { return mSizeOnly; }
+
+    std::istream& getInputStream() { assert(mIs); return *mIs; }
+    void setInputStream(std::istream& is) { mIs = &is; }
+
+    PageHandle::Ptr createHandle(std::streamsize n);
+
+    void read(PageHandle::Ptr& pageHandle, std::streamsize n, bool delayed = true);
+
+private:
+    int mByteIndex = 0;
+    int mUncompressedBytes = 0;
+    std::istream* mIs = nullptr;
+    Page::Ptr mPage;
+    bool mSizeOnly = false;
+}; // class PagedInputStream
+
+
+class PagedOutputStream
+{
+public:
+    using Ptr = std::shared_ptr<PagedOutputStream>;
+
+    PagedOutputStream() = default;
+
+    explicit PagedOutputStream(std::ostream& os);
+
+    void setSizeOnly(bool sizeOnly) { mSizeOnly = sizeOnly; }
+    bool sizeOnly() const { return mSizeOnly; }
+
+    std::ostream& getOutputStream() { assert(mOs); return *mOs; }
+    void setOutputStream(std::ostream& os) { mOs = &os; }
+
+    PagedOutputStream& write(const char* str, std::streamsize n);
+
+    void flush();
+
+private:
+    void compressAndWrite(const char* buffer, size_t size);
+
+    void resize(size_t size);
+
+    std::unique_ptr<char[]> mData = std::unique_ptr<char[]>(new char[PageSize]);
+#ifdef OPENVDB_USE_BLOSC
+    std::unique_ptr<char[]> mCompressedData = std::unique_ptr<char[]>(new char[PageSize + BLOSC_MAX_OVERHEAD]);
+#endif
+    size_t mCapacity = PageSize;
+    int mBytes = 0;
+    std::ostream* mOs = nullptr;
+    bool mSizeOnly = false;
+}; // class PagedOutputStream
 
 
 } // namespace compression
