@@ -82,6 +82,48 @@ enum COMPRESSION_TYPE
     UNIT_FIXED_POINT_16,
 };
 
+/// @brief Returns supported Storage types for conversion from GA_Attribute
+///
+inline GA_Storage
+attributeStorageType(const GA_Attribute* const attribute)
+{
+    if (!attribute) return GA_STORE_INVALID;
+
+    const GA_AIFTuple* tupleAIF = attribute->getAIFTuple();
+    if (!tupleAIF)
+    {
+        if (attribute->getAIFStringTuple()) return GA_STORE_STRING;
+    }
+    else
+    {
+        return tupleAIF->getStorage(attribute);
+    }
+
+    return GA_STORE_INVALID;
+}
+
+inline int16_t
+attributeTupleSize(const GA_Attribute* const attribute)
+{
+    if (!attribute) return int16_t(0);
+
+    const GA_AIFTuple* tupleAIF = attribute->getAIFTuple();
+    if (!tupleAIF)
+    {
+        const GA_AIFStringTuple* tupleAIFString = attribute->getAIFStringTuple();
+        if (tupleAIFString)
+        {
+            return static_cast<int16_t>(tupleAIFString->getTupleSize(attribute));
+        }
+    }
+    else
+    {
+        return static_cast<int16_t>(tupleAIF->getTupleSize(attribute));
+    }
+
+    return int16_t(0);
+}
+
 template <typename ValueType, typename HoudiniOffsetAttribute>
 void
 convertSegmentsFromHoudini( PointDataTree& tree, const PointIndexTree& indexTree, const openvdb::Name& name,
@@ -130,14 +172,15 @@ convertAttributeFromHoudini(PointDataTree& tree, const PointIndexTree& indexTree
         throw std::runtime_error(ss.str());
     }
 
-    GA_Storage storage(GA_STORE_INVALID);
-    int16_t width(1);
-    attributeType(attribute, storage, width);
+    const GA_Storage storage(attributeStorageType(attribute));
 
     if (storage == GA_STORE_INVALID) {
         std::stringstream ss; ss << "Invalid attribute type - " << attribute->getName();
         throw std::runtime_error(ss.str());
     }
+
+    const int16_t width(attributeTupleSize(attribute));
+    assert(width > 0);
 
     // explicitly handle string attributes
 
@@ -438,6 +481,53 @@ createPointDataGrid(const GU_Detail& ptGeo, const int compression,
     }
 
     return pointDataGrid;
+}
+
+///////////////////////////////////////
+
+
+template<typename ValueType>
+Metadata::Ptr
+createTypedMetadataFromAttribute(const GA_Attribute* const attribute)
+{
+    using HoudiniAttribute = hvdbp::HoudiniReadAttribute<ValueType>;
+
+    ValueType value;
+    HoudiniAttribute::get(*attribute, value, /*offset*/0, /*component*/0);
+    return openvdb::TypedMetadata<ValueType>(value).copy();
+}
+
+template<typename ValueType>
+void
+createHoudiniDetailAttribute(GU_Detail& detail, const PointDataGrid& grid, const Name& srcName, const Name& dstName)
+{
+    using WriteHandleType = typename hvdbp::GAHandleTraits<ValueType>::RW;
+    using TypedMetadataT = TypedMetadata<ValueType>;
+    const bool IsVec = openvdb::VecTraits<ValueType>::IsVec;
+
+    typename TypedMetadataT::ConstPtr typedMeta = grid.getMetadata<TypedMetadataT>(srcName);
+    if (!typedMeta) return;
+
+    GA_RWAttributeRef attrib = detail.findGlobalAttribute(dstName.c_str());
+
+    if (attrib.isInvalid())
+    {
+        const GA_Storage storage = hvdbp::gaStorageFromAttrString(openvdb::typeNameAsString<ValueType>());
+
+        if (storage == GA_STORE_INVALID) {
+            throw std::runtime_error("Internal Error: Invalid GA Attribute Store Type.");
+        }
+
+        attrib = detail.addTuple(storage, GA_ATTRIB_GLOBAL , dstName.c_str(), /*width*/ IsVec ? 3 : 1);
+
+        if (!attrib.isValid()) {
+            throw std::runtime_error("Error creating attribute with name \"" + dstName + "\"");
+        }
+    }
+
+    const ValueType& value = typedMeta->value();
+    WriteHandleType handle(attrib.getAttribute());
+    hvdbp::writeAttributeValue<WriteHandleType, ValueType>(handle, GA_Offset(0), 0, value);
 }
 
 
@@ -792,6 +882,37 @@ SOP_OpenVDB_Points::cookMySop(OP_Context& context)
 
                 hvdbp::convertPointDataGridToHoudini(geo, grid, emptyNameVector, includeGroups, excludeGroups);
 
+                for(MetaMap::ConstMetaIterator iter = grid.beginMeta(); iter != grid.endMeta(); ++iter)
+                {
+                    const Metadata::Ptr metadata = iter->second;
+                    if (!metadata) continue;
+
+                    const Name& srcName = iter->first;
+
+                    const bool isDetail = srcName.compare(0, 7, "detail:") == 0;
+                    if (!isDetail) continue;
+
+                    Name dstName(srcName);
+                    dstName.erase(0, 7);
+
+                    const Name type = metadata->typeName();
+
+                    if (type == openvdb::typeNameAsString<bool>())                 createHoudiniDetailAttribute<bool>(geo, grid, srcName, dstName);
+                    else if (type == openvdb::typeNameAsString<int16_t>())         createHoudiniDetailAttribute<int16_t>(geo, grid, srcName, dstName);
+                    else if (type == openvdb::typeNameAsString<int32_t>())         createHoudiniDetailAttribute<int32_t>(geo, grid, srcName, dstName);
+                    else if (type == openvdb::typeNameAsString<int64_t>())         createHoudiniDetailAttribute<int64_t>(geo, grid, srcName, dstName);
+                    else if (type == openvdb::typeNameAsString<float>())           createHoudiniDetailAttribute<float>(geo, grid, srcName, dstName);
+                    else if (type == openvdb::typeNameAsString<double>())          createHoudiniDetailAttribute<double>(geo, grid, srcName, dstName);
+                    else if (type == openvdb::typeNameAsString<Vec3<int32_t> >())  createHoudiniDetailAttribute<Vec3<int32_t> >(geo, grid, srcName, dstName);
+                    else if (type == openvdb::typeNameAsString<Vec3<float> >())    createHoudiniDetailAttribute<Vec3<float> >(geo, grid, srcName, dstName);
+                    else if (type == openvdb::typeNameAsString<Vec3<double> >())   createHoudiniDetailAttribute<Vec3<double> >(geo, grid, srcName, dstName);
+                    else if (type == openvdb::typeNameAsString<Name>())            createHoudiniDetailAttribute<Name>(geo, grid, srcName, dstName);
+                    else {
+                        std::stringstream ss; ss << "Metadata value \"" << srcName << "\" unsupported type for detail attribute conversion.";
+                        addWarning(SOP_MESSAGE, ss.str().c_str());
+                    }
+                }
+
                 gdp->merge(geo);
             }
 
@@ -864,25 +985,27 @@ SOP_OpenVDB_Points::cookMySop(OP_Context& context)
             if (evalInt("attrList", 0, time) > 0) {
                 for (int i = 1, N = evalInt("attrList", 0, 0); i <= N; ++i) {
                     evalStringInst("attribute#", &i, attrName, 0, 0);
-                    Name attributeName = Name(attrName);
+                    const Name attributeName = Name(attrName);
 
                     const GA_ROAttributeRef attrRef = detail->findPointAttribute(attributeName.c_str());
 
                     if (!attrRef.isValid()) continue;
 
-                    GA_Attribute const * attribute = attrRef.getAttribute();
+                    const GA_Attribute* const attribute = attrRef.getAttribute();
 
                     if (!attribute) continue;
 
+                    const GA_Storage storage(attributeStorageType(attribute));
+
                     // only tuple and string tuple attributes are supported
 
-                    const GA_AIFTuple* tupleAIF = attribute->getAIFTuple();
-                    const GA_AIFStringTuple* stringAIF = attribute->getAIFStringTuple();
-
-                    if (!tupleAIF && !stringAIF) {
-                        std::stringstream ss; ss << "Invalid attribute type - " << attribute->getName();
+                    if (storage == GA_STORE_INVALID) {
+                        std::stringstream ss; ss << "Invalid attribute type - " << attributeName;
                         throw std::runtime_error(ss.str());
                     }
+
+                    const int16_t width(attributeTupleSize(attribute));
+                    assert(width > 0);
 
                     const bool bloscCompression = evalIntInst("blosccompression#", &i, 0, 0);
                     int valueCompression = evalIntInst("valuecompression#", &i, 0, 0);
@@ -891,7 +1014,7 @@ SOP_OpenVDB_Points::cookMySop(OP_Context& context)
 
                     if (valueCompression != NONE)
                     {
-                        if (stringAIF) {
+                        if (storage == GA_STORE_STRING) {
                             // disable value compression for strings and add a SOP warning
 
                             std::stringstream ss; ss << "Value compression not supported on string attributes. "
@@ -899,11 +1022,8 @@ SOP_OpenVDB_Points::cookMySop(OP_Context& context)
                             valueCompression = NONE;
                             addWarning(SOP_MESSAGE, ss.str().c_str());
                         }
-                        else if (tupleAIF) {
+                        else {
                             // disable value compression for incompatible types and add a SOP warning
-
-                            const GA_Storage storage = tupleAIF->getStorage(attribute);
-                            const int16_t width = static_cast<int16_t>(tupleAIF->getTupleSize(attribute));
 
                             if (valueCompression == TRUNCATE && storage != GA_STORE_REAL32) {
                                 std::stringstream ss; ss << "Truncate value compression only supported for 32-bit floating-point attributes. "
@@ -911,6 +1031,7 @@ SOP_OpenVDB_Points::cookMySop(OP_Context& context)
                                 valueCompression = NONE;
                                 addWarning(SOP_MESSAGE, ss.str().c_str());
                             }
+
                             if (valueCompression == UNIT_VECTOR && (storage != GA_STORE_REAL32 || width != 3)) {
                                 std::stringstream ss; ss << "Unit Vector value compression only supported for vector 3 x 32-bit floating-point attributes. "
                                                             "Disabling compression for attribute \"" << attributeName << "\".";
@@ -957,6 +1078,47 @@ SOP_OpenVDB_Points::cookMySop(OP_Context& context)
         const int positionCompression = evalInt("poscompression", 0, time);
 
         PointDataGrid::Ptr pointDataGrid = createPointDataGrid(*detail, positionCompression, attributes, *transform);
+
+        for (GA_AttributeDict::iterator iter = detail->attribs().begin(GA_SCOPE_PUBLIC); !iter.atEnd(); ++iter)
+        {
+            const GA_Attribute* const attribute = *iter;
+            if (!attribute) continue;
+
+            const Name name("detail:" + Name(attribute->getName()));
+            Metadata::Ptr metadata = (*pointDataGrid)[name];
+            if (metadata) continue;
+
+            const GA_Storage storage(attributeStorageType(attribute));
+            const int16_t width(attributeTupleSize(attribute));
+
+            const bool isVec(width == 3);
+
+            if(isVec)
+            {
+                if (storage == GA_STORE_INT32)         metadata = createTypedMetadataFromAttribute<Vec3<int32_t> >(attribute);
+                else if (storage == GA_STORE_REAL16)   metadata = createTypedMetadataFromAttribute<Vec3<float> >(attribute);
+                else if (storage == GA_STORE_REAL32)   metadata = createTypedMetadataFromAttribute<Vec3<float> >(attribute);
+                else if (storage == GA_STORE_REAL64)   metadata = createTypedMetadataFromAttribute<Vec3<double> >(attribute);
+                else {
+                    std::stringstream ss; ss << "Detail attribute \"" << attribute->getName() << "\" unsupported type for metadata conversion.";
+                    addWarning(SOP_MESSAGE, ss.str().c_str());
+                }
+            }
+            else if (storage == GA_STORE_STRING)    metadata = createTypedMetadataFromAttribute<openvdb::Name>(attribute);
+            else if (storage == GA_STORE_BOOL)      metadata = createTypedMetadataFromAttribute<bool>(attribute);
+            else if (storage == GA_STORE_INT16)     metadata = createTypedMetadataFromAttribute<int16_t>(attribute);
+            else if (storage == GA_STORE_INT32)     metadata = createTypedMetadataFromAttribute<int32_t>(attribute);
+            else if (storage == GA_STORE_INT64)     metadata = createTypedMetadataFromAttribute<int64_t>(attribute);
+            else if (storage == GA_STORE_REAL16)    metadata = createTypedMetadataFromAttribute<float>(attribute);
+            else if (storage == GA_STORE_REAL32)    metadata = createTypedMetadataFromAttribute<float>(attribute);
+            else if (storage == GA_STORE_REAL64)    metadata = createTypedMetadataFromAttribute<double>(attribute);
+            else {
+                std::stringstream ss; ss << "Detail attribute \"" << attribute->getName() << "\" unsupported type for metadata conversion.";
+                addWarning(SOP_MESSAGE, ss.str().c_str());
+            }
+
+            if (metadata) pointDataGrid->insertMeta(name, *metadata);
+        }
 
         UT_String nameStr = "";
         evalString(nameStr, "name", 0, time);
