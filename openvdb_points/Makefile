@@ -270,19 +270,19 @@ UNITTEST_INCLUDE_NAMES := \
 
 UNITTEST_SRC_NAMES := \
     unittest/main.cc \
-    unittest/TestIndexFilter.cc \
-    unittest/TestIndexIterator.cc \
-    unittest/TestAttributeArray.cc \
-    unittest/TestAttributeArrayString.cc \
-    unittest/TestAttributeSet.cc \
-    unittest/TestAttributeGroup.cc \
-    unittest/TestPointAttribute.cc \
-    unittest/TestPointConversion.cc \
-    unittest/TestPointCount.cc \
     unittest/TestPointDataLeaf.cc \
-    unittest/TestPointGroup.cc \
-    unittest/TestPointLoad.cc \
-    unittest/TestStreamCompression.cc \
+    # unittest/TestIndexFilter.cc \
+    # unittest/TestIndexIterator.cc \
+    # unittest/TestAttributeArray.cc \
+    # unittest/TestAttributeArrayString.cc \
+    # unittest/TestAttributeSet.cc \
+    # unittest/TestAttributeGroup.cc \
+    # unittest/TestPointAttribute.cc \
+    # unittest/TestPointConversion.cc \
+    # unittest/TestPointCount.cc \
+    # unittest/TestPointGroup.cc \
+    # unittest/TestPointLoad.cc \
+    # unittest/TestStreamCompression.cc \
 #
 
 DOC_FILES := 	doc/doc.txt \
@@ -445,7 +445,7 @@ vdb_test: $(LIBOPENVDBPOINTS) $(UNITTEST_OBJ_NAMES)
 
 test: lib vdb_test
 	@echo "Testing $(LIBOPENVDBPOINTS_NAME)"
-	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(CURDIR); ./vdb_test $(QUIET_TEST)
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(CURDIR); ./vdb_test -t TestPointDataLeaf::testIO
 else
 vdb_test:
 	@echo "$@"': $$(CPPUNIT_INCL_DIR) is undefined'

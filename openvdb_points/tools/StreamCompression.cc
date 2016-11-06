@@ -68,6 +68,8 @@ size_t bloscUncompressedSize(const char* buffer)
 void bloscCompress( char* compressedBuffer, size_t& compressedBytes, const size_t bufferBytes,
                     const char* uncompressedBuffer, const size_t uncompressedBytes)
 {
+    std::cerr << "Can't compress array data without the blosc library." << std::endl;
+
     if (bufferBytes > BLOSC_MAX_BUFFERSIZE) {
         OPENVDB_LOG_DEBUG("Blosc compress failed due to exceeding maximum buffer size.");
         compressedBytes = 0;
@@ -147,6 +149,8 @@ void bloscCompress( char* compressedBuffer, size_t& compressedBytes, const size_
 
 std::unique_ptr<char[]> bloscCompress(const char* buffer, const size_t uncompressedBytes, size_t& compressedBytes, const bool resize)
 {
+    std::cerr << "Can't compress array data without the blosc library." << std::endl;
+
     size_t tempBytes = uncompressedBytes + BLOSC_MAX_OVERHEAD;
     // increase temporary buffer for padding if necessary
     if (tempBytes >= BLOSC_MINIMUM_BYTES && tempBytes < BLOSC_PAD_BYTES) {
@@ -154,6 +158,8 @@ std::unique_ptr<char[]> bloscCompress(const char* buffer, const size_t uncompres
     }
     const bool outOfRange = tempBytes > BLOSC_MAX_BUFFERSIZE;
     std::unique_ptr<char[]> outBuffer(outOfRange ? new char[1] : new char[tempBytes]);
+
+    std::cerr << "<<BLOSC COMPRESS>>" << std::endl;
 
     bloscCompress(outBuffer.get(), compressedBytes, tempBytes, buffer, uncompressedBytes);
 
@@ -176,6 +182,8 @@ std::unique_ptr<char[]> bloscCompress(const char* buffer, const size_t uncompres
 
 size_t bloscCompressedSize( const char* buffer, const size_t uncompressedBytes)
 {
+    std::cerr << "Can't compress array data without the blosc library." << std::endl;
+
     size_t compressedBytes;
     bloscCompress(buffer, uncompressedBytes, compressedBytes, /*resize=*/false);
     return compressedBytes;
@@ -192,6 +200,8 @@ void bloscDecompress(char* uncompressedBuffer, const size_t expectedBytes, const
     if (bufferBytes < uncompressedBytes + BLOSC_MAX_OVERHEAD) {
         OPENVDB_THROW(RuntimeError, "Blosc decompress failed due to insufficient space in uncompressed buffer.");
     }
+
+    std::cerr << "<<BLOSC DECOMPRESS>>" << std::endl;
 
     uncompressedBytes = blosc_decompress_ctx(   /*src=*/compressedBuffer,
                                                 /*dest=*/uncompressedBuffer,

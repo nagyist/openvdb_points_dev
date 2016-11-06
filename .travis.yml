@@ -3,7 +3,7 @@ sudo: required
 dist: trusty
 
 notifications:
-  slack: openvdbpoints:pfJN91siHqukIHPBS8i3XGJQ
+  #slack: openvdbpoints:pfJN91siHqukIHPBS8i3XGJQ
 
 language:
   - cpp
@@ -12,18 +12,18 @@ os:
   - linux
 
 compiler:
-  - gcc
   - clang
+  #- gcc
 
 env:
   - ABI=3 BLOSC=no RELEASE=no HOUDINI_MAJOR=none HOUDINI_BUILD=none
-  - ABI=3 BLOSC=yes RELEASE=yes HOUDINI_MAJOR=none HOUDINI_BUILD=none
-  - ABI=4 BLOSC=no RELEASE=yes HOUDINI_MAJOR=none HOUDINI_BUILD=none
-  - ABI=4 BLOSC=yes RELEASE=yes HOUDINI_MAJOR=none HOUDINI_BUILD=none
-  - ABI=4 BLOSC=no RELEASE=no HOUDINI_MAJOR=none HOUDINI_BUILD=none
-  - ABI=4 BLOSC=yes RELEASE=no HOUDINI_MAJOR=none HOUDINI_BUILD=none
-  - ABI=3 BLOSC=yes RELEASE=yes HOUDINI_MAJOR=Houdini15 HOUDINI_BUILD=houdini-15.0.479-linux_x86_64_gcc4.8
-  - ABI=3 BLOSC=yes RELEASE=yes HOUDINI_MAJOR=Houdini15.5 HOUDINI_BUILD=houdini-15.5.540-linux_x86_64_gcc4.8
+  #- ABI=3 BLOSC=yes RELEASE=yes HOUDINI_MAJOR=none HOUDINI_BUILD=none
+  #- ABI=4 BLOSC=no RELEASE=yes HOUDINI_MAJOR=none HOUDINI_BUILD=none
+  #- ABI=4 BLOSC=yes RELEASE=yes HOUDINI_MAJOR=none HOUDINI_BUILD=none
+  #- ABI=4 BLOSC=no RELEASE=no HOUDINI_MAJOR=none HOUDINI_BUILD=none
+  #- ABI=4 BLOSC=yes RELEASE=no HOUDINI_MAJOR=none HOUDINI_BUILD=none
+  #- ABI=3 BLOSC=yes RELEASE=yes HOUDINI_MAJOR=Houdini15 HOUDINI_BUILD=houdini-15.0.479-linux_x86_64_gcc4.8
+  #- ABI=3 BLOSC=yes RELEASE=yes HOUDINI_MAJOR=Houdini15.5 HOUDINI_BUILD=houdini-15.5.540-linux_x86_64_gcc4.8
 
 before_install:
   - pip install --user codecov

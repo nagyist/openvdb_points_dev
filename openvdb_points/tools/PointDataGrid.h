@@ -115,6 +115,7 @@ readCompressedValues(   std::istream& is, PointDataIndex32* destBuf, Index destC
             is.seekg(int(bytes16), std::ios_base::cur);
         }
         else {
+            std::cerr << "READ COMPRESSED WITH BLOSC" << std::endl;
             // decompress into the destination buffer
             std::unique_ptr<char[]> bloscBuffer(new char[int(bytes16)]);
             is.read(bloscBuffer.get(), bytes16);
