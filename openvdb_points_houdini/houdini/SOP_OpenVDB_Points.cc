@@ -92,7 +92,10 @@ attributeStorageType(const GA_Attribute* const attribute)
     const GA_AIFTuple* tupleAIF = attribute->getAIFTuple();
     if (!tupleAIF)
     {
-        if (attribute->getAIFStringTuple()) return GA_STORE_STRING;
+        if (attribute->getAIFStringTuple())
+        {
+            return GA_STORE_STRING;
+        }
     }
     else
     {
@@ -488,18 +491,47 @@ createPointDataGrid(const GU_Detail& ptGeo, const int compression,
 
 template<typename ValueType>
 Metadata::Ptr
-createTypedMetadataFromAttribute(const GA_Attribute* const attribute)
+createTypedMetadataFromAttribute(   const GA_Attribute* const attribute, const uint32_t component = 0)
 {
     using HoudiniAttribute = hvdbp::HoudiniReadAttribute<ValueType>;
 
     ValueType value;
-    HoudiniAttribute::get(*attribute, value, /*offset*/0, /*component*/0);
+    HoudiniAttribute::get(*attribute, value, /*offset*/0, component);
     return openvdb::TypedMetadata<ValueType>(value).copy();
 }
 
-template<typename ValueType>
+using DetailInfo = std::pair<int, Metadata::Ptr>;
+using DetailMap = std::map<Name, DetailInfo>;
+
 void
-createHoudiniDetailAttribute(GU_Detail& detail, const PointDataGrid& grid, const Name& srcName, const Name& dstName)
+createHoudiniDetailAttributes(GU_Detail& detail, const DetailMap& detailAttributes)
+{
+    for (const auto& item : detailAttributes) {
+        const Name& name = item.first.c_str();
+        const DetailInfo& info = item.second;
+
+        GA_RWAttributeRef attrib = detail.findGlobalAttribute(name);
+
+        if (attrib.isInvalid())
+        {
+
+            const GA_Storage storage = hvdbp::gaStorageFromAttrString(info.second->typeName());
+
+            if (storage == GA_STORE_INVALID) {
+                throw std::runtime_error("Internal Error: Invalid GA Attribute Store Type.");
+            }
+
+            attrib = detail.addTuple(storage, GA_ATTRIB_GLOBAL, name.c_str(), info.first+1);
+
+            if (!attrib.isValid()) {
+                throw std::runtime_error("Error creating attribute with name \"" + name + "\"");
+            }
+        }
+    }
+}
+
+template <typename ValueType>
+void populateHoudiniDetailValue(GA_RWAttributeRef& attrib)
 {
     using WriteHandleType = typename hvdbp::GAHandleTraits<ValueType>::RW;
     using TypedMetadataT = TypedMetadata<ValueType>;
@@ -508,26 +540,15 @@ createHoudiniDetailAttribute(GU_Detail& detail, const PointDataGrid& grid, const
     typename TypedMetadataT::ConstPtr typedMeta = grid.getMetadata<TypedMetadataT>(srcName);
     if (!typedMeta) return;
 
-    GA_RWAttributeRef attrib = detail.findGlobalAttribute(dstName.c_str());
-
-    if (attrib.isInvalid())
-    {
-        const GA_Storage storage = hvdbp::gaStorageFromAttrString(openvdb::typeNameAsString<ValueType>());
-
-        if (storage == GA_STORE_INVALID) {
-            throw std::runtime_error("Internal Error: Invalid GA Attribute Store Type.");
-        }
-
-        attrib = detail.addTuple(storage, GA_ATTRIB_GLOBAL , dstName.c_str(), /*width*/ IsVec ? 3 : 1);
-
-        if (!attrib.isValid()) {
-            throw std::runtime_error("Error creating attribute with name \"" + dstName + "\"");
-        }
-    }
-
     const ValueType& value = typedMeta->value();
     WriteHandleType handle(attrib.getAttribute());
     hvdbp::writeAttributeValue<WriteHandleType, ValueType>(handle, GA_Offset(0), 0, value);
+}
+
+void
+populateHoudiniDetailAttributes(GU_Detail& detail, const DetailMap& detailAttributes)
+{
+
 }
 
 
@@ -882,6 +903,8 @@ SOP_OpenVDB_Points::cookMySop(OP_Context& context)
 
                 hvdbp::convertPointDataGridToHoudini(geo, grid, emptyNameVector, includeGroups, excludeGroups);
 
+                DetailMap detailAttributes;
+
                 for(MetaMap::ConstMetaIterator iter = grid.beginMeta(); iter != grid.endMeta(); ++iter)
                 {
                     const Metadata::Ptr metadata = iter->second;
@@ -895,23 +918,32 @@ SOP_OpenVDB_Points::cookMySop(OP_Context& context)
                     Name dstName(srcName);
                     dstName.erase(0, 7);
 
-                    const Name type = metadata->typeName();
+                    const size_t open = dstName.find('[');
+                    const size_t close = dstName.find(']');
 
-                    if (type == openvdb::typeNameAsString<bool>())                 createHoudiniDetailAttribute<bool>(geo, grid, srcName, dstName);
-                    else if (type == openvdb::typeNameAsString<int16_t>())         createHoudiniDetailAttribute<int16_t>(geo, grid, srcName, dstName);
-                    else if (type == openvdb::typeNameAsString<int32_t>())         createHoudiniDetailAttribute<int32_t>(geo, grid, srcName, dstName);
-                    else if (type == openvdb::typeNameAsString<int64_t>())         createHoudiniDetailAttribute<int64_t>(geo, grid, srcName, dstName);
-                    else if (type == openvdb::typeNameAsString<float>())           createHoudiniDetailAttribute<float>(geo, grid, srcName, dstName);
-                    else if (type == openvdb::typeNameAsString<double>())          createHoudiniDetailAttribute<double>(geo, grid, srcName, dstName);
-                    else if (type == openvdb::typeNameAsString<Vec3<int32_t> >())  createHoudiniDetailAttribute<Vec3<int32_t> >(geo, grid, srcName, dstName);
-                    else if (type == openvdb::typeNameAsString<Vec3<float> >())    createHoudiniDetailAttribute<Vec3<float> >(geo, grid, srcName, dstName);
-                    else if (type == openvdb::typeNameAsString<Vec3<double> >())   createHoudiniDetailAttribute<Vec3<double> >(geo, grid, srcName, dstName);
-                    else if (type == openvdb::typeNameAsString<Name>())            createHoudiniDetailAttribute<Name>(geo, grid, srcName, dstName);
+                    int index = 0;
+
+                    if (open != std::string::npos && close != std::string::npos &&
+                        close == dstName.length()-1 && open > 0 && open+1 < close) {
+                        try { // parse array index
+                            index = std::stoi(dstName.substr(open+1, close-open-1));
+                        }
+                        catch (const std::exception& e) { }
+                        dstName = dstName.substr(0, open);
+                    }
+
+                    if (detailAttributes.find(dstName) == detailAttributes.end()) {
+                        detailAttributes[dstName] = DetailInfo(index, metadata);
+                    }
                     else {
-                        std::stringstream ss; ss << "Metadata value \"" << srcName << "\" unsupported type for detail attribute conversion.";
-                        addWarning(SOP_MESSAGE, ss.str().c_str());
+                        if (index > detailAttributes[dstName].first) {
+                            detailAttributes[dstName].first = index;
+                        }
                     }
                 }
+
+                createHoudiniDetailAttributes(geo, detailAttributes);
+                populateHoudiniDetailAttributes(geo, detailAttributes);
 
                 gdp->merge(geo);
             }
@@ -1091,33 +1123,47 @@ SOP_OpenVDB_Points::cookMySop(OP_Context& context)
             const GA_Storage storage(attributeStorageType(attribute));
             const int16_t width(attributeTupleSize(attribute));
 
-            const bool isVec(width == 3);
+            if (storage == GA_STORE_STRING) {
+                for (int i = 0; i < width; i++) {
+                    metadata = createTypedMetadataFromAttribute<openvdb::Name>(attribute, i);
+                    assert(metadata);
+                    if (width > 1) {
+                        const Name arrayName(name + Name("[") + std::to_string(i) + Name("]"));
+                        pointDataGrid->insertMeta(arrayName, *metadata);
+                    }
+                    else {
+                        pointDataGrid->insertMeta(name, *metadata);
+                    }
+                }
+            }
+            else {
+                const bool isVec(width == 3);
 
-            if(isVec)
-            {
-                if (storage == GA_STORE_INT32)         metadata = createTypedMetadataFromAttribute<Vec3<int32_t> >(attribute);
-                else if (storage == GA_STORE_REAL16)   metadata = createTypedMetadataFromAttribute<Vec3<float> >(attribute);
-                else if (storage == GA_STORE_REAL32)   metadata = createTypedMetadataFromAttribute<Vec3<float> >(attribute);
-                else if (storage == GA_STORE_REAL64)   metadata = createTypedMetadataFromAttribute<Vec3<double> >(attribute);
+                if(isVec)
+                {
+                    if (storage == GA_STORE_INT32)         metadata = createTypedMetadataFromAttribute<Vec3<int32_t> >(attribute);
+                    else if (storage == GA_STORE_REAL16)   metadata = createTypedMetadataFromAttribute<Vec3<float> >(attribute);
+                    else if (storage == GA_STORE_REAL32)   metadata = createTypedMetadataFromAttribute<Vec3<float> >(attribute);
+                    else if (storage == GA_STORE_REAL64)   metadata = createTypedMetadataFromAttribute<Vec3<double> >(attribute);
+                    else {
+                        std::stringstream ss; ss << "Detail attribute \"" << attribute->getName() << "\" unsupported type for metadata conversion.";
+                        addWarning(SOP_MESSAGE, ss.str().c_str());
+                    }
+                }
+                if (storage == GA_STORE_BOOL)      metadata = createTypedMetadataFromAttribute<bool>(attribute);
+                else if (storage == GA_STORE_INT16)     metadata = createTypedMetadataFromAttribute<int16_t>(attribute);
+                else if (storage == GA_STORE_INT32)     metadata = createTypedMetadataFromAttribute<int32_t>(attribute);
+                else if (storage == GA_STORE_INT64)     metadata = createTypedMetadataFromAttribute<int64_t>(attribute);
+                else if (storage == GA_STORE_REAL16)    metadata = createTypedMetadataFromAttribute<float>(attribute);
+                else if (storage == GA_STORE_REAL32)    metadata = createTypedMetadataFromAttribute<float>(attribute);
+                else if (storage == GA_STORE_REAL64)    metadata = createTypedMetadataFromAttribute<double>(attribute);
                 else {
                     std::stringstream ss; ss << "Detail attribute \"" << attribute->getName() << "\" unsupported type for metadata conversion.";
                     addWarning(SOP_MESSAGE, ss.str().c_str());
                 }
-            }
-            else if (storage == GA_STORE_STRING)    metadata = createTypedMetadataFromAttribute<openvdb::Name>(attribute);
-            else if (storage == GA_STORE_BOOL)      metadata = createTypedMetadataFromAttribute<bool>(attribute);
-            else if (storage == GA_STORE_INT16)     metadata = createTypedMetadataFromAttribute<int16_t>(attribute);
-            else if (storage == GA_STORE_INT32)     metadata = createTypedMetadataFromAttribute<int32_t>(attribute);
-            else if (storage == GA_STORE_INT64)     metadata = createTypedMetadataFromAttribute<int64_t>(attribute);
-            else if (storage == GA_STORE_REAL16)    metadata = createTypedMetadataFromAttribute<float>(attribute);
-            else if (storage == GA_STORE_REAL32)    metadata = createTypedMetadataFromAttribute<float>(attribute);
-            else if (storage == GA_STORE_REAL64)    metadata = createTypedMetadataFromAttribute<double>(attribute);
-            else {
-                std::stringstream ss; ss << "Detail attribute \"" << attribute->getName() << "\" unsupported type for metadata conversion.";
-                addWarning(SOP_MESSAGE, ss.str().c_str());
-            }
 
-            if (metadata) pointDataGrid->insertMeta(name, *metadata);
+                if (metadata) pointDataGrid->insertMeta(name, *metadata);
+            }
         }
 
         UT_String nameStr = "";
