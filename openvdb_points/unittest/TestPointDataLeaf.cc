@@ -1112,56 +1112,56 @@ TestPointDataLeaf::testIO()
 
     // read and write buffers to disk
 
-    {
-        LeafType leaf2(openvdb::Coord(0, 0, 0));
+    // {
+    //     LeafType leaf2(openvdb::Coord(0, 0, 0));
 
-        io::StreamMetadata::Ptr streamMetadata(new io::StreamMetadata);
+    //     io::StreamMetadata::Ptr streamMetadata(new io::StreamMetadata);
 
-        std::ostringstream ostr(std::ios_base::binary);
-        io::setStreamMetadataPtr(ostr, streamMetadata);
-        io::setDataCompression(ostr, io::COMPRESS_BLOSC);
-        leaf.writeTopology(ostr);
-        for (Index b = 0; b < leaf.buffers(); b++) {
-            streamMetadata->setPass(b);
-            leaf.writeBuffers(ostr);
-        }
-        { // error checking
-            streamMetadata->setPass(1000);
-            leaf.writeBuffers(ostr);
+    //     std::ostringstream ostr(std::ios_base::binary);
+    //     io::setStreamMetadataPtr(ostr, streamMetadata);
+    //     io::setDataCompression(ostr, io::COMPRESS_BLOSC);
+    //     leaf.writeTopology(ostr);
+    //     for (Index b = 0; b < leaf.buffers(); b++) {
+    //         streamMetadata->setPass(b);
+    //         leaf.writeBuffers(ostr);
+    //     }
+    //     { // error checking
+    //         streamMetadata->setPass(1000);
+    //         leaf.writeBuffers(ostr);
 
-            io::StreamMetadata::Ptr meta;
-            io::setStreamMetadataPtr(ostr, meta);
-            CPPUNIT_ASSERT_THROW(leaf.writeBuffers(ostr), openvdb::IoError);
-        }
+    //         io::StreamMetadata::Ptr meta;
+    //         io::setStreamMetadataPtr(ostr, meta);
+    //         CPPUNIT_ASSERT_THROW(leaf.writeBuffers(ostr), openvdb::IoError);
+    //     }
 
-        std::istringstream istr(ostr.str(), std::ios_base::binary);
-        io::setStreamMetadataPtr(istr, streamMetadata);
-        io::setDataCompression(istr, io::COMPRESS_BLOSC);
+    //     std::istringstream istr(ostr.str(), std::ios_base::binary);
+    //     io::setStreamMetadataPtr(istr, streamMetadata);
+    //     io::setDataCompression(istr, io::COMPRESS_BLOSC);
 
-        // Since the input stream doesn't include a VDB header with file format version info,
-        // tag the input stream explicitly with the current version number.
-        io::setCurrentVersion(istr);
+    //     // Since the input stream doesn't include a VDB header with file format version info,
+    //     // tag the input stream explicitly with the current version number.
+    //     io::setCurrentVersion(istr);
 
-        std::cerr << "A"<< std::endl;
+    //     std::cerr << "A"<< std::endl;
 
-        leaf2.readTopology(istr);
-        for (Index b = 0; b < leaf.buffers(); b++) {
-            streamMetadata->setPass(b);
-            std::cerr << "A: " << b << std::endl;
-            leaf2.readBuffers(istr);
-        }
+    //     leaf2.readTopology(istr);
+    //     for (Index b = 0; b < leaf.buffers(); b++) {
+    //         streamMetadata->setPass(b);
+    //         std::cerr << "A: " << b << std::endl;
+    //         leaf2.readBuffers(istr);
+    //     }
 
-        // check topology matches
+    //     // check topology matches
 
-        CPPUNIT_ASSERT_EQUAL(leaf.onVoxelCount(), leaf2.onVoxelCount());
-        CPPUNIT_ASSERT(leaf2.isValueOn(4));
-        CPPUNIT_ASSERT(!leaf2.isValueOn(5));
+    //     CPPUNIT_ASSERT_EQUAL(leaf.onVoxelCount(), leaf2.onVoxelCount());
+    //     CPPUNIT_ASSERT(leaf2.isValueOn(4));
+    //     CPPUNIT_ASSERT(!leaf2.isValueOn(5));
 
-        // check only topology (values and attributes still empty)
+    //     // check only topology (values and attributes still empty)
 
-        CPPUNIT_ASSERT_EQUAL(leaf2.getValue(4), ValueType(20));
-        CPPUNIT_ASSERT_EQUAL(leaf2.attributeSet().size(), size_t(2));
-    }
+    //     CPPUNIT_ASSERT_EQUAL(leaf2.getValue(4), ValueType(20));
+    //     CPPUNIT_ASSERT_EQUAL(leaf2.attributeSet().size(), size_t(2));
+    // }
 
     { // test multi-buffer IO
         // create a new grid with a single origin leaf
@@ -1186,14 +1186,18 @@ TestPointDataLeaf::testIO()
         PointDataGrid::Ptr gridFromDisk;
 
         {
+            std::cerr << "READ C" << std::endl;
+
             io::File file("leaf.vdb");
             file.open();
             openvdb::GridBase::Ptr baseGrid = file.readGrid("points");
             file.close();
 
-            std::cerr << "B" << std::endl;
+            std::cerr << "READ D" << std::endl;
 
             gridFromDisk = openvdb::gridPtrCast<PointDataGrid>(baseGrid);
+
+            std::cerr << "READ E" << std::endl;
         }
 
         LeafType* leafFromDisk = gridFromDisk->tree().probeLeaf(openvdb::Coord(0, 0, 0));

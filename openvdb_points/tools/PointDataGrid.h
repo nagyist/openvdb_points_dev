@@ -1209,9 +1209,14 @@ PointDataLeafNode<T, Log2Dim>::readBuffers(std::istream& is, const CoordBBox& /*
 
     const Index attributes = (this->buffers() - 4) / 2;
 
+    std::cerr << "ReadBuffers: " << pass << " " << attributes << std::endl;
+
     if (pass == 0) {
         // pass 0 - voxel data sizes
         is.read(reinterpret_cast<char*>(&mVoxelBufferSize), sizeof(uint16_t));
+
+        std::cerr << "Voxel Buffer Size: " << mVoxelBufferSize << std::endl;
+
         Local::clearMatchingDescriptor(meta->auxData());
     }
     else if (pass == 1) {
@@ -1249,6 +1254,8 @@ PointDataLeafNode<T, Log2Dim>::readBuffers(std::istream& is, const CoordBBox& /*
         // StreamMetadata pass variable used to temporarily store voxel buffer size
         io::StreamMetadata& nonConstMeta = const_cast<io::StreamMetadata&>(*meta);
         nonConstMeta.setPass(mVoxelBufferSize);
+
+        std::cerr << "[" << is.tellg() << "] Voxel Buffer Read: " << mVoxelBufferSize << std::endl;
 
         // readBuffers() calls readCompressedValues specialization above
         BaseLeaf::readBuffers(is, fromHalf);
@@ -1384,6 +1391,8 @@ PointDataLeafNode<T, Log2Dim>::writeBuffers(std::ostream& os, bool toHalf) const
     }
 
     const Index attributes = (this->buffers() - 4) / 2;
+
+    std::cerr << "WriteBuffers: " << pass << " " << attributes << std::endl;
 
     if (pass == 0) {
         // pass 0 - voxel data sizes
