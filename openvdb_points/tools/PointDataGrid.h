@@ -1116,6 +1116,8 @@ template<typename T, Index Log2Dim>
 inline void
 PointDataLeafNode<T, Log2Dim>::writeTopology(std::ostream& os, bool toHalf) const
 {
+    std::cerr << "[" << os.tellp() << "] WriteTopology " << std::endl;
+
     BaseLeaf::writeTopology(os, toHalf);
 }
 

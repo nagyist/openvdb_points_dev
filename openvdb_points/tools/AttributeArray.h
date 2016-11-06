@@ -1454,6 +1454,8 @@ TypedAttributeArray<ValueType_, Codec_>::readPagedBuffers(compression::PagedInpu
         return;
     }
 
+    std::cerr << "[" << is.getInputStream().tellg() << "] readPagedBuffers" << std::endl;
+
     // If this array is being read from a memory-mapped file, delay loading of its data
     // until the data is actually accessed.
     io::MappedFile::Ptr mappedFile = io::getMappedFilePtr(is.getInputStream());

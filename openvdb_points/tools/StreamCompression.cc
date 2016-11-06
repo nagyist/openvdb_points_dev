@@ -332,6 +332,8 @@ void Page::readHeader(std::istream& is)
     int compressedSize;
     is.read(reinterpret_cast<char*>(&compressedSize), sizeof(int));
 
+    std::cerr << "[" << is.tellg() << "] compressed size: " << compressedSize << std::endl;
+
     int uncompressedSize;
     // if uncompressed, read the (compressed) size of the page
     if (compressedSize > 0)     is.read(reinterpret_cast<char*>(&uncompressedSize), sizeof(int));
@@ -483,6 +485,8 @@ PagedInputStream::PagedInputStream(std::istream& is)
 PageHandle::Ptr PagedInputStream::createHandle(std::streamsize n)
 {
     assert(mByteIndex <= mUncompressedBytes);
+
+    std::cerr << "CreateHandle: " << mByteIndex << " " << mUncompressedBytes << std::endl;
 
     if (mByteIndex == mUncompressedBytes) {
 
