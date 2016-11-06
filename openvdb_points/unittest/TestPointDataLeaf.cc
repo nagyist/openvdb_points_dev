@@ -1089,26 +1089,26 @@ TestPointDataLeaf::testIO()
 
     // read and write topology to disk
 
-    {
-        LeafType leaf2(openvdb::Coord(0, 0, 0));
+    // {
+    //     LeafType leaf2(openvdb::Coord(0, 0, 0));
 
-        std::ostringstream ostr(std::ios_base::binary);
-        leaf.writeTopology(ostr);
+    //     std::ostringstream ostr(std::ios_base::binary);
+    //     leaf.writeTopology(ostr);
 
-        std::istringstream istr(ostr.str(), std::ios_base::binary);
-        leaf2.readTopology(istr);
+    //     std::istringstream istr(ostr.str(), std::ios_base::binary);
+    //     leaf2.readTopology(istr);
 
-        // check topology matches
+    //     // check topology matches
 
-        CPPUNIT_ASSERT_EQUAL(leaf.onVoxelCount(), leaf2.onVoxelCount());
-        CPPUNIT_ASSERT(leaf2.isValueOn(4));
-        CPPUNIT_ASSERT(!leaf2.isValueOn(5));
+    //     CPPUNIT_ASSERT_EQUAL(leaf.onVoxelCount(), leaf2.onVoxelCount());
+    //     CPPUNIT_ASSERT(leaf2.isValueOn(4));
+    //     CPPUNIT_ASSERT(!leaf2.isValueOn(5));
 
-        // check only topology (values and attributes still empty)
+    //     // check only topology (values and attributes still empty)
 
-        CPPUNIT_ASSERT_EQUAL(leaf2.getValue(4), ValueType(0));
-        CPPUNIT_ASSERT_EQUAL(leaf2.attributeSet().size(), size_t(0));
-    }
+    //     CPPUNIT_ASSERT_EQUAL(leaf2.getValue(4), ValueType(0));
+    //     CPPUNIT_ASSERT_EQUAL(leaf2.attributeSet().size(), size_t(0));
+    // }
 
     // read and write buffers to disk
 
@@ -1142,9 +1142,12 @@ TestPointDataLeaf::testIO()
         // tag the input stream explicitly with the current version number.
         io::setCurrentVersion(istr);
 
+        std::cerr << "A"<< std::endl;
+
         leaf2.readTopology(istr);
         for (Index b = 0; b < leaf.buffers(); b++) {
             streamMetadata->setPass(b);
+            std::cerr << "A: " << b << std::endl;
             leaf2.readBuffers(istr);
         }
 
@@ -1187,6 +1190,8 @@ TestPointDataLeaf::testIO()
             file.open();
             openvdb::GridBase::Ptr baseGrid = file.readGrid("points");
             file.close();
+
+            std::cerr << "B" << std::endl;
 
             gridFromDisk = openvdb::gridPtrCast<PointDataGrid>(baseGrid);
         }

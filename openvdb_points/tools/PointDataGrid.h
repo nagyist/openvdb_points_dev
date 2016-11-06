@@ -94,28 +94,33 @@ readCompressedValues(   std::istream& is, PointDataIndex32* destBuf, Index destC
         bytes16 = static_cast<uint16_t>(meta->pass());
         // seek over size of the compressed buffer
         is.seekg(sizeof(uint16_t), std::ios_base::cur);
+        std::cerr << "> [" << is.tellg() << "] Seek: " << bytes16 << std::endl;
     }
     else {
         // otherwise read from disk
         is.read(reinterpret_cast<char*>(&bytes16), sizeof(uint16_t));
+        std::cerr << "> [" << is.tellg() << "] Read: " << bytes16 << std::endl;
     }
 
     if (bytes16 == std::numeric_limits<uint16_t>::max()) {
         // read or seek uncompressed data
         if (seek) {
+            std::cerr << "> [" << is.tellg() << "] Seek Data: " << destBytes << std::endl;
             is.seekg(destBytes, std::ios_base::cur);
         }
         else {
+            std::cerr << "> [" << is.tellg() << "] Read Data: " << destBytes << std::endl;
             is.read(reinterpret_cast<char*>(destBuf), destBytes);
         }
     }
     else {
-        // read or seek uncompressed data
+        // read or seek compressed data
         if (seek) {
+            std::cerr << "> [" << is.tellg() << "] Seek Compressed Data: " << int(bytes16) << std::endl;
             is.seekg(int(bytes16), std::ios_base::cur);
         }
         else {
-            std::cerr << "READ COMPRESSED WITH BLOSC" << std::endl;
+            std::cerr << "> [" << is.tellg() << "] Read Compressed Data: " << int(bytes16) << std::endl;
             // decompress into the destination buffer
             std::unique_ptr<char[]> bloscBuffer(new char[int(bytes16)]);
             is.read(bloscBuffer.get(), bytes16);
@@ -153,12 +158,16 @@ writeCompressedValues(  std::ostream& os, PointDataIndex32* srcBuf, Index srcCou
     if (compressedBytes > 0) {
         uint16_t bytes16(compressedBytes); // clamp to 16-bit unsigned integer
         os.write(reinterpret_cast<const char*>(&bytes16), sizeof(uint16_t));
+        std::cerr << "> Write Compressed: " << bytes16 << std::endl;
         os.write(reinterpret_cast<const char*>(buffer.get()), compressedBytes);
+        std::cerr << "> Write Compressed Data: " << compressedBytes << std::endl;
     }
     else {
         uint16_t bytes16(maximumBytes); // max value indicates uncompressed
         os.write(reinterpret_cast<const char*>(&bytes16), sizeof(uint16_t));
+        std::cerr << "> Write Uncompressed: " << bytes16 << std::endl;
         os.write(reinterpret_cast<const char*>(srcBuf), srcBytes);
+        std::cerr << "> Write Uncompressed Data: " << srcBytes << std::endl;
     }
 }
 
@@ -183,10 +192,12 @@ writeCompressedValuesSize(std::ostream& os, const T* srcBuf, Index srcCount)
     if (compressedBytes > 0) {
         uint16_t bytes16(compressedBytes); // clamp to 16-bit unsigned integer
         os.write(reinterpret_cast<const char*>(&bytes16), sizeof(uint16_t));
+        std::cerr << "> Write Compressed Size: " << bytes16 << std::endl;
     }
     else {
         uint16_t bytes16(maximumBytes); // max value indicates uncompressed
         os.write(reinterpret_cast<const char*>(&bytes16), sizeof(uint16_t));
+        std::cerr << "> Write Uncompressed Size: " << bytes16 << std::endl;
     }
 }
 
