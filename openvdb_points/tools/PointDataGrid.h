@@ -1209,7 +1209,7 @@ PointDataLeafNode<T, Log2Dim>::readBuffers(std::istream& is, const CoordBBox& /*
 
     const Index attributes = (this->buffers() - 4) / 2;
 
-    std::cerr << "ReadBuffers: " << pass << " " << attributes << std::endl;
+    std::cerr << "[" << is.tellg() << "] ReadBuffers: " << pass << " " << attributes << std::endl;
 
     if (pass == 0) {
         // pass 0 - voxel data sizes
@@ -1392,7 +1392,7 @@ PointDataLeafNode<T, Log2Dim>::writeBuffers(std::ostream& os, bool toHalf) const
 
     const Index attributes = (this->buffers() - 4) / 2;
 
-    std::cerr << "WriteBuffers: " << pass << " " << attributes << std::endl;
+    std::cerr << "[" << os.tellp() << "] WriteBuffers: " << pass << " " << attributes << std::endl;
 
     if (pass == 0) {
         // pass 0 - voxel data sizes
