@@ -317,6 +317,12 @@ namespace attribute_traits
     template <typename T> struct TruncateTrait<math::Vec3<T>> {
         using Type = math::Vec3<typename TruncateTrait<T>::Type>;
     };
+    template <typename T> struct TruncateTrait<math::Quat<T>> {
+        using Type = math::Quat<typename TruncateTrait<T>::Type>;
+    };
+    template <typename T> struct TruncateTrait<math::Mat4<T>> {
+        using Type = math::Mat4<typename TruncateTrait<T>::Type>;
+    };
 
     template <bool OneByte, typename T> struct UIntTypeTrait { };
     template<typename T> struct UIntTypeTrait</*OneByte=*/true, T> { using Type = uint8_t; };

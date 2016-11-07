@@ -87,6 +87,8 @@ initialize()
 
     TypedAttributeArray<float, TruncateCodec>::registerType();
     TypedAttributeArray<Vec3<float>, TruncateCodec>::registerType();
+    TypedAttributeArray<math::Quat<float>, TruncateCodec>::registerType();
+    TypedAttributeArray<math::Mat4<float>, TruncateCodec>::registerType();
 
     // fixed point compression
 
