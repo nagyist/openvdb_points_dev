@@ -40,10 +40,12 @@ class TestStreamCompression: public CppUnit::TestCase
 public:
     CPPUNIT_TEST_SUITE(TestStreamCompression);
     CPPUNIT_TEST(testBlosc);
+    CPPUNIT_TEST(testPagedStreams);
 
     CPPUNIT_TEST_SUITE_END();
 
     void testBlosc();
+    void testPagedStreams();
 }; // class TestStreamCompression
 
 CPPUNIT_TEST_SUITE_REGISTRATION(TestStreamCompression);
@@ -201,6 +203,81 @@ TestStreamCompression::testBlosc()
         CPPUNIT_ASSERT(!compressedBuffer);
         CPPUNIT_ASSERT_EQUAL(compressedBytes, size_t(0));
     }
+}
+
+
+void
+TestStreamCompression::testPagedStreams()
+{
+    { // one small value
+        std::ostringstream ostr(std::ios_base::binary);
+        PagedOutputStream ostream(ostr);
+
+        int foo = 5;
+        ostream.write(reinterpret_cast<const char*>(&foo), sizeof(int));
+        CPPUNIT_ASSERT_EQUAL(ostr.tellp(), std::streampos(0));
+
+        ostream.flush();
+        CPPUNIT_ASSERT_EQUAL(ostr.tellp(), std::streampos(sizeof(int)));
+    }
+
+    { // small values up to page threshold
+        std::ostringstream ostr(std::ios_base::binary);
+        PagedOutputStream ostream(ostr);
+
+        for (int i = 0; i < PageSize; i++) {
+            uint8_t oneByte = 255;
+            ostream.write(reinterpret_cast<const char*>(&oneByte), sizeof(uint8_t));
+        }
+        CPPUNIT_ASSERT_EQUAL(ostr.tellp(), std::streampos(0));
+
+        std::vector<uint8_t> values;
+        values.assign(PageSize, uint8_t(255));
+        size_t compressedSize = compression::bloscCompressedSize(reinterpret_cast<const char*>(&values[0]),
+                                                                 PageSize);
+
+        uint8_t oneMoreByte(255);
+        ostream.write(reinterpret_cast<const char*>(&oneMoreByte), sizeof(char));
+        CPPUNIT_ASSERT_EQUAL(ostr.tellp(), std::streampos(compressedSize));
+    }
+
+    { // one large block at exactly page threshold
+        std::ostringstream ostr(std::ios_base::binary);
+        PagedOutputStream ostream(ostr);
+
+        std::vector<uint8_t> values;
+        values.assign(PageSize, uint8_t(255));
+        ostream.write(reinterpret_cast<const char*>(&values[0]), values.size());
+
+        CPPUNIT_ASSERT_EQUAL(ostr.tellp(), std::streampos(0));
+    }
+
+    { // two large blocks at page threshold + 1 byte
+        std::ostringstream ostr(std::ios_base::binary);
+        PagedOutputStream ostream(ostr);
+
+        std::vector<uint8_t> values;
+        values.assign(PageSize + 1, uint8_t(255));
+        ostream.write(reinterpret_cast<const char*>(&values[0]), values.size());
+
+        size_t compressedSize = compression::bloscCompressedSize(   reinterpret_cast<const char*>(&values[0]),
+                                                                    values.size());
+
+        CPPUNIT_ASSERT_EQUAL(ostr.tellp(), std::streampos(compressedSize));
+
+        ostream.write(reinterpret_cast<const char*>(&values[0]), values.size());
+
+        CPPUNIT_ASSERT_EQUAL(ostr.tellp(), std::streampos(compressedSize * 2));
+
+        uint8_t oneMoreByte(255);
+        ostream.write(reinterpret_cast<const char*>(&oneMoreByte), sizeof(uint8_t));
+
+        ostream.flush();
+
+        CPPUNIT_ASSERT_EQUAL(ostr.tellp(), std::streampos(compressedSize * 2 + 1));
+    }
+
+    // test sizeOnly
 }
 
 
